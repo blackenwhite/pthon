@@ -204,6 +204,8 @@ step 2: add result status and provenance metadata
 
 ### Step 3 — Add a reproducible dataset-preparation script
 
+**Status:** Done (uncommitted until Nabajyoti reviews). `python -m src.benchmark` regenerates `benchmark/` from `store/`. Photo PNGs are decoded from `rgb.mp4`; video is a copy of that file; LiDAR is a copied Record3D folder. `benchmark/manifest.json` states that stills are derived RGB, not native photographs. Generated blobs are gitignored; `benchmark/README.md` is the committed note.
+
 **Objective:** Derive logical photo, video, and LiDAR inputs from `store/` without using personal-room data.
 
 **Why:** We do not have an iPhone 15+ and will not use private room captures. The supplied data is the reproducible development source.

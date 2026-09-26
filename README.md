@@ -164,7 +164,27 @@ python -m src store/c00a170fe1 --tier lidar --from-ply
 
 With `--from-ply`, `source_files` is the existing `cloud.ply` and `cloud_origin` is `existing_ply`. A run without `--from-ply` lists `camera_matrix.csv`, `odometry.csv`, `rgb.mp4`, `depth`, and `confidence` under the capture, and sets `cloud_origin` to `rebuilt_this_run`. `--report` writes the same provenance block on `report.json`. A `--versus` capture gets its own block on its report and inside the primary report’s `versus` object.
 
-Wall and opening counts still change between repeats because Open3D floor RANSAC is unseeded. Photo and video inputs are not separate adapters yet. The next step is a script that derives benchmark inputs from `store/`.
+Wall and opening counts still change between repeats because Open3D floor RANSAC is unseeded. Photo and video adapters are not wired yet. Derived inputs for those tiers now live under `benchmark/` (see below).
+
+## Derived benchmark inputs
+
+There is no iPhone 15+ capture and no private-room data. One command rebuilds logical photo, video, and LiDAR folders from the supplied Record3D dumps in `store/`:
+
+```bash
+python -m src.benchmark
+```
+
+or `python scripts/prepare_benchmark.py`. Default output is `benchmark/`. `--store` and `--out` override the paths. `--max-stills` (default 12) sets how many PNG frames are decoded per room.
+
+| Logical tier | Path | What it actually is |
+|---|---|---|
+| Photo | `benchmark/photo/room_01/*.png` | Frames decoded from that capture’s `rgb.mp4`. Not independent native photographs, not screen captures. |
+| Video | `benchmark/video/room_01.mp4` | A byte-for-byte copy of the same `rgb.mp4`. Not a separate camera recording. |
+| LiDAR | `benchmark/lidar/room_01/` | A copy of the Record3D folder (`rgb.mp4`, `depth/`, `confidence/`, `odometry.csv`, `imu.csv`, `camera_matrix.csv`). |
+
+Room ids are stable: `c00a170fe1` → `room_01` (single room), `c7d28f72c6` → `room_02` (look-up / ceiling), `1a8384c3f6` → `room_03` (report dump). `benchmark/manifest.json` repeats that the stills are derived RGB frames. Generated `photo/`, `video/`, `lidar/`, and the manifest are gitignored; `benchmark/README.md` is the committed regeneration note.
+
+This step does not reconstruct from photo or video. Metric plans still come from the LiDAR/RGB-D path. The next step is explicit adapters that enforce those file boundaries.
 
 ## Tests
 

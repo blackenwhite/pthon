@@ -1,6 +1,10 @@
 .venv/
 store/
 out/
+benchmark/photo/
+benchmark/video/
+benchmark/lidar/
+benchmark/manifest.json
 __pycache__/
 *.pyc
 .DS_Store
