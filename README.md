@@ -28,6 +28,24 @@ open out/c00a170fe1/preview_top_rgb.png out/c00a170fe1/preview_top_height.png ou
 
 `--cloud` also writes those PNGs. For a 3D tumble, use [MeshLab](https://www.meshlab.net/) or [CloudCompare](https://www.danielgm.net/cc/) — not Preview. If the cloud looks inside-out, rerun with `--invert-extrinsics`.
 
+## Slice 3 — floor, walls, height
+
+RANSAC planes: Open3D voxel downsample + `segment_plane` for floor/ceiling; orientation-constrained numpy RANSAC for walls (Open3D always returns the densest plane, which in this scan is furniture). Floor and walls from `single_room`. **Ceiling height only from the same scan that looked up** (`single_scan_with_ceiling`) — do not mix Y from two folders.
+
+```bash
+python -m src store/c00a170fe1 --planes
+python -m src store/c00a170fe1 --planes --ceiling store/c7d28f72c6
+python -m src store/c7d28f72c6 --planes --frame-stride 24 --pixel-stride 8
+```
+
+Open `out/<id>/preview_plan.png`. Stdout reports RMSE / median residual; that is fit error, not tape-measure accuracy. If there is no ceiling plane the CLI prints `BLOCKED` instead of inventing 2.4 m.
+
+Reuse a PLY you already built:
+
+```bash
+python -m src store/c00a170fe1 --planes --from-ply
+```
+
 ## Tests
 
 ```bash

@@ -1,9 +1,11 @@
-"""CLI. Slice 2: --inspect and --cloud."""
+"""CLI. Slice 3: --inspect, --cloud, --preview, --planes."""
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
+
+import numpy as np
 
 from src.cloud import (
     build_cloud,
@@ -13,6 +15,39 @@ from src.cloud import (
     write_preview_pngs,
 )
 from src.ingest import inspect_text, load_capture
+from src.planes import fit_planes, planes_text, write_plan_preview
+
+
+def _cloud_out(capture: Path, explicit: Path | None) -> Path:
+    if explicit is not None:
+        return explicit
+    return Path("out") / capture.resolve().name / "cloud.ply"
+
+
+def _ensure_cloud(
+    capture: Path,
+    *,
+    out: Path,
+    frame_stride: int,
+    pixel_stride: int,
+    min_confidence: int,
+    invert_extrinsics: bool,
+    from_ply: bool,
+) -> tuple[np.ndarray, np.ndarray]:
+    if from_ply and out.exists():
+        points, colors = read_ply(out)
+        return points, colors
+    cap = load_capture(capture)
+    result = build_cloud(
+        cap,
+        frame_stride=frame_stride,
+        pixel_stride=pixel_stride,
+        min_confidence=min_confidence,
+        invert_extrinsics=invert_extrinsics,
+    )
+    write_ply(out, result.points, result.colors)
+    print(cloud_text(result, out))
+    return result.points, result.colors
 
 
 def main(argv: list[str] | None = None) -> int:
@@ -27,6 +62,22 @@ def main(argv: list[str] | None = None) -> int:
         "--cloud",
         action="store_true",
         help="Subsample RGB-D + poses and write a metric PLY",
+    )
+    parser.add_argument(
+        "--planes",
+        action="store_true",
+        help="RANSAC floor/walls/(ceiling) and write a 2D plan PNG",
+    )
+    parser.add_argument(
+        "--ceiling",
+        type=Path,
+        default=None,
+        help="Second capture used only for same-scan ceiling height (e.g. with_ceiling)",
+    )
+    parser.add_argument(
+        "--from-ply",
+        action="store_true",
+        help="Reuse an existing cloud.ply instead of rebuilding",
     )
     parser.add_argument(
         "--out",
@@ -48,25 +99,67 @@ def main(argv: list[str] | None = None) -> int:
         help="Write PNG orthographic views next to the PLY (open these in Preview)",
     )
     args = parser.parse_args(argv)
-    if not args.inspect and not args.cloud and not args.preview:
-        parser.error("pass --inspect, --cloud, and/or --preview")
+    if not args.inspect and not args.cloud and not args.preview and not args.planes:
+        parser.error("pass --inspect, --cloud, --preview, and/or --planes")
     out = args.out
-    if args.cloud or args.inspect:
+    wrote_cloud = False
+    if args.inspect:
         cap = load_capture(args.capture)
-        if args.inspect:
-            print(inspect_text(cap))
-        if args.cloud:
-            out = out or Path("out") / cap.root.name / "cloud.ply"
-            result = build_cloud(
-                cap,
-                frame_stride=args.frame_stride,
-                pixel_stride=args.pixel_stride,
+        print(inspect_text(cap))
+    if args.cloud:
+        cap = load_capture(args.capture)
+        out = out or Path("out") / cap.root.name / "cloud.ply"
+        result = build_cloud(
+            cap,
+            frame_stride=args.frame_stride,
+            pixel_stride=args.pixel_stride,
+            min_confidence=args.min_confidence,
+            invert_extrinsics=args.invert_extrinsics,
+        )
+        write_ply(out, result.points, result.colors)
+        print(cloud_text(result, out))
+        args.preview = True
+        wrote_cloud = True
+    if args.planes:
+        ply = _cloud_out(args.capture, out)
+        points, _colors = _ensure_cloud(
+            args.capture,
+            out=ply,
+            frame_stride=args.frame_stride,
+            pixel_stride=args.pixel_stride,
+            min_confidence=args.min_confidence,
+            invert_extrinsics=args.invert_extrinsics,
+            from_ply=args.from_ply or wrote_cloud,
+        )
+        fitted = fit_planes(points)
+        print(planes_text(fitted, label=str(args.capture)))
+        plan_png = ply.parent / "preview_plan.png"
+        write_plan_preview(points, fitted.polygon_xz, plan_png)
+        print(f"plan PNG: {plan_png.resolve()}")
+        if args.ceiling is not None:
+            ceil_ply = Path("out") / args.ceiling.resolve().name / "cloud.ply"
+            # heavier subsample: this dump is ~9745 frames
+            c_stride = max(args.frame_stride, 24)
+            c_pix = max(args.pixel_stride, 8)
+            c_pts, _c_cols = _ensure_cloud(
+                args.ceiling,
+                out=ceil_ply,
+                frame_stride=c_stride,
+                pixel_stride=c_pix,
                 min_confidence=args.min_confidence,
                 invert_extrinsics=args.invert_extrinsics,
+                from_ply=False,
             )
-            write_ply(out, result.points, result.colors)
-            print(cloud_text(result, out))
-            args.preview = True
+            c_fit = fit_planes(c_pts)
+            print(
+                planes_text(
+                    c_fit,
+                    label=f"{args.ceiling} (height from this scan only; not fused with {args.capture})",
+                )
+            )
+            c_png = ceil_ply.parent / "preview_plan.png"
+            write_plan_preview(c_pts, c_fit.polygon_xz, c_png)
+            print(f"ceiling-scan plan PNG: {c_png.resolve()}")
     if args.preview:
         ply = out or Path("out") / args.capture.resolve().name / "cloud.ply"
         if not ply.exists():
