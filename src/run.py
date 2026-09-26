@@ -1,4 +1,4 @@
-"""CLI. Slice 5: --inspect, --cloud, --preview, --planes, --tier lidar, --drift."""
+"""CLI. Slices 1–6: inspect, cloud, planes, lidar export, drift, stills/video."""
 
 from __future__ import annotations
 
@@ -17,6 +17,7 @@ from src.cloud import (
 )
 from src.export import write_plan_exports
 from src.ingest import inspect_text, load_capture
+from src.media import export_stills, export_video, stills_text, video_text
 from src.planes import fit_planes, planes_text, write_plan_preview
 from src.posegraph import drift_text, refine_pose_graph, write_drift_preview
 
@@ -112,6 +113,16 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Pose-graph vs raw odometry ablation (drift.json + drift_path.png)",
     )
+    parser.add_argument(
+        "--stills",
+        action="store_true",
+        help="Write pose-aligned PNG stills from rgb.mp4 (stills/ + stills.json)",
+    )
+    parser.add_argument(
+        "--video",
+        action="store_true",
+        help="Write a shorter mp4 from rgb.mp4 at --frame-stride (video.mp4 + video.json)",
+    )
     args = parser.parse_args(argv)
     want_planes = args.planes or args.tier is not None
     if (
@@ -120,9 +131,12 @@ def main(argv: list[str] | None = None) -> int:
         and not args.preview
         and not want_planes
         and not args.drift
+        and not args.stills
+        and not args.video
     ):
         parser.error(
-            "pass --inspect, --cloud, --preview, --planes, --tier lidar, and/or --drift"
+            "pass --inspect, --cloud, --preview, --planes, --tier lidar, "
+            "--drift, --stills, and/or --video"
         )
     out = args.out
     wrote_cloud = False
@@ -230,6 +244,22 @@ def main(argv: list[str] | None = None) -> int:
         png = write_drift_preview(drift, drift_dir / "drift_path.png")
         print(f"drift JSON: {jpath.resolve()}")
         print(f"drift PNG: {png.resolve()}")
+    if args.stills or args.video:
+        cap = load_capture(args.capture)
+        media_dir = _cloud_out(args.capture, out).parent
+        if args.stills:
+            stills = export_stills(cap, media_dir, frame_stride=args.frame_stride)
+            print(stills_text(stills))
+            if not stills.stills:
+                print(f"no stills written; could not read frames from {cap.root / 'rgb.mp4'}")
+                return 1
+        if args.video:
+            clip = export_video(cap, media_dir, frame_stride=args.frame_stride)
+            print(video_text(clip))
+            if clip.n_frames == 0:
+                print(f"no video written; could not read frames from {cap.root / 'rgb.mp4'}")
+                return 1
+            print(f"video MP4: {clip.path.resolve()}")
     return 0
 
 

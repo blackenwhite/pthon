@@ -9,6 +9,7 @@ import cv2
 import numpy as np
 
 from src.ingest import Capture, Pose
+from src.media import read_rgb_frames
 
 # ARKit / Record3D stores millimetres in uint16 depth PNGs.
 DEPTH_MM_TO_M = 0.001
@@ -150,19 +151,7 @@ def build_cloud(
     src_poses = cap.poses if poses is None else poses
     poses = src_poses[:: max(1, frame_stride)]
     wanted = {int(p.frame) for p in poses}
-
-    video = cv2.VideoCapture(str(cap.root / "rgb.mp4"))
-    rgb_by_idx: dict[int, np.ndarray] = {}
-    if video.isOpened():
-        idx = 0
-        while True:
-            ok, frame = video.read()
-            if not ok:
-                break
-            if idx in wanted:
-                rgb_by_idx[idx] = frame
-            idx += 1
-        video.release()
+    rgb_by_idx = read_rgb_frames(cap.root / "rgb.mp4", wanted)
 
     chunks_xyz: list[np.ndarray] = []
     chunks_rgb: list[np.ndarray] = []

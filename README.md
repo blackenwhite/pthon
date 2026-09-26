@@ -75,6 +75,16 @@ python -m src store/c00a170fe1 --tier lidar --drift --from-ply
 
 This is an ablation, not a claim that drift is solved. Openings are not a trained door detector.
 
+## Slice 6 — stills and video from `rgb.mp4`
+
+Same color video the cloud already reads. `--stills` writes pose-aligned PNGs. `--video` writes a shorter mp4 at `--frame-stride` (playback fps is source fps divided by the stride, so duration stays about the same). Neither measures the room.
+
+```bash
+python -m src store/c00a170fe1 --stills --video --frame-stride 12
+```
+
+Outputs under `out/c00a170fe1/`: `stills/*.png`, `stills.json`, `video.mp4`, `video.json`.
+
 ## Tests
 
 ```bash
