@@ -332,6 +332,35 @@ def _aabb_area(poly: np.ndarray) -> float:
     return float((poly[:, 0].max() - poly[:, 0].min()) * (poly[:, 1].max() - poly[:, 1].min()))
 
 
+def _floor_margin_box(hull: np.ndarray) -> tuple[float, float, float, float]:
+    """XZ box around the floor hull. Corners a little outside the points are fine; 20 m spikes are not."""
+    span_x = float(hull[:, 0].max() - hull[:, 0].min())
+    span_z = float(hull[:, 1].max() - hull[:, 1].min())
+    margin = max(1.0, 0.25 * max(span_x, span_z))
+    return (
+        float(hull[:, 0].min()) - margin,
+        float(hull[:, 0].max()) + margin,
+        float(hull[:, 1].min()) - margin,
+        float(hull[:, 1].max()) + margin,
+    )
+
+
+def _inside_box(xz: np.ndarray, box: tuple[float, float, float, float]) -> bool:
+    x0, x1, z0, z1 = box
+    return x0 <= float(xz[0]) <= x1 and z0 <= float(xz[1]) <= z1
+
+
+def _polygon_within_floor(poly: np.ndarray, hull: np.ndarray) -> bool:
+    if poly.shape[0] < 4 or hull.shape[0] < 3:
+        return False
+    hull_area = max(_aabb_area(hull), 1e-6)
+    area = _aabb_area(poly)
+    if area < 0.25 * hull_area or area > 4.0 * hull_area:
+        return False
+    box = _floor_margin_box(hull)
+    return all(_inside_box(xz, box) for xz in poly[:-1])
+
+
 def polygon_from_walls(floor: FittedPlane, walls: list[FittedPlane]) -> tuple[np.ndarray, str]:
     hull = _convex_hull_xz(floor.points[:, [0, 2]])
     if not walls:
@@ -344,14 +373,20 @@ def polygon_from_walls(floor: FittedPlane, walls: list[FittedPlane]) -> tuple[np
         n = w.normal
         ang = float(np.arctan2(n[2], n[0]))
         lines.append((ang, line))
+    box = _floor_margin_box(hull) if hull.shape[0] >= 3 else None
     inter = np.zeros((0, 2), dtype=np.float64)
-    if len(lines) >= 2:
+    if len(lines) >= 2 and box is not None:
         lines.sort(key=lambda t: t[0])
         verts: list[np.ndarray] = []
         n = len(lines)
         for i in range(n):
-            hit = _intersect_xz(lines[i][1], lines[(i + 1) % n][1])
-            if hit is None:
+            l1 = lines[i][1]
+            l2 = lines[(i + 1) % n][1]
+            # Nearly parallel lines meet tens of metres away and blow up the outline.
+            if abs(float(np.dot(l1[:2], l2[:2]))) > 0.985:
+                continue
+            hit = _intersect_xz(l1, l2)
+            if hit is None or not _inside_box(hit, box):
                 continue
             verts.append(hit)
         if len(verts) >= 3:
@@ -360,11 +395,11 @@ def polygon_from_walls(floor: FittedPlane, walls: list[FittedPlane]) -> tuple[np
             order = np.argsort(np.arctan2(poly[:, 1] - c[1], poly[:, 0] - c[0]))
             poly = poly[order]
             inter = np.vstack([poly, poly[0:1]])
-    if inter.shape[0] >= 4 and _aabb_area(inter) >= 0.25 * _aabb_area(hull):
+    if _polygon_within_floor(inter, hull):
         return inter, "polygon from wall ∩ floor lines"
     wall_pts = np.concatenate([w.points[:, [0, 2]] for w in walls], axis=0)
     wall_hull = _convex_hull_xz(wall_pts)
-    if _aabb_area(wall_hull) >= 0.25 * _aabb_area(hull):
+    if _polygon_within_floor(wall_hull, hull):
         return wall_hull, "polygon from wall-inlier convex hull (line intersections degenerate)"
     return hull, "polygon from floor convex hull (wall intersections degenerate)"
 
@@ -376,21 +411,35 @@ def _to_fitted(model: np.ndarray, pts: np.ndarray, kind: str) -> FittedPlane:
     return FittedPlane(model, pts, rmse, med, kind)
 
 
-def _dedupe_walls(walls: list[FittedPlane]) -> list[FittedPlane]:
+def wall_alignment(a: FittedPlane, b: FittedPlane) -> tuple[float, float]:
+    """Absolute normal dot, and the smaller plane-to-plane offset (metres)."""
+    delta = b.mean_xyz - a.mean_xyz
+    offset = min(
+        abs(float(np.dot(delta, a.normal))),
+        abs(float(np.dot(delta, b.normal))),
+    )
+    return abs(float(np.dot(a.normal, b.normal))), offset
+
+
+def _dedupe_walls(
+    walls: list[FittedPlane],
+    *,
+    normal_dot: float = 0.95,
+    offset_m: float = 0.30,
+    max_keep: int = 8,
+) -> list[FittedPlane]:
     walls = sorted(walls, key=lambda w: -w.n_inliers)
     unique_walls: list[FittedPlane] = []
     for w in walls:
-        n = w.normal
         dup = False
         for u in unique_walls:
-            if abs(float(np.dot(n, u.normal))) > 0.95:
-                offset = abs(float(np.dot(w.mean_xyz - u.mean_xyz, n)))
-                if offset < 0.30:
-                    dup = True
-                    break
+            aligned, offset = wall_alignment(w, u)
+            if aligned > normal_dot and offset < offset_m:
+                dup = True
+                break
         if not dup:
             unique_walls.append(w)
-    return unique_walls[:8]
+    return unique_walls[:max_keep]
 
 
 def fit_planes(

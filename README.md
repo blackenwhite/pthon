@@ -85,6 +85,16 @@ python -m src store/c00a170fe1 --stills --video --frame-stride 12
 
 Outputs under `out/c00a170fe1/`: `stills/*.png`, `stills.json`, `video.mp4`, `video.json`.
 
+## Slice 7 — damage report and fix loop
+
+Checks the reconstruction, not the room: an outline that runs away from the floor, near-duplicate walls, a missing floor, or a height outside 1.6–4.5 m. A short loop replaces an exploded outline (floor hull if the wall lines are still wild) and merges walls closer than 0.45 m with aligned normals. `height_m` stays null when that capture has no ceiling. Two folders are never fused.
+
+```bash
+python -m src store/1a8384c3f6 --report --versus store/c7d28f72c6 --frame-stride 24 --pixel-stride 8
+```
+
+Writes `out/1a8384c3f6/report.json` and `out/c7d28f72c6/report.json`. `height_m` is `BLOCKED` unless that capture’s own cloud has a ceiling plane. The p95−p05 figure in the report is a percentile check, not a ceiling measurement.
+
 ## Tests
 
 ```bash

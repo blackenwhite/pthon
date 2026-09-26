@@ -1,4 +1,4 @@
-"""CLI. Slices 1–6: inspect, cloud, planes, lidar export, drift, stills/video."""
+"""CLI. Slices 1–7: inspect, cloud, planes, lidar export, drift, stills/video, damage report."""
 
 from __future__ import annotations
 
@@ -20,6 +20,7 @@ from src.ingest import inspect_text, load_capture
 from src.media import export_stills, export_video, stills_text, video_text
 from src.planes import fit_planes, planes_text, write_plan_preview
 from src.posegraph import drift_text, refine_pose_graph, write_drift_preview
+from src.report import attach_versus, fix_loop, report_text, write_report
 
 
 def _cloud_out(capture: Path, explicit: Path | None) -> Path:
@@ -123,8 +124,21 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Write a shorter mp4 from rgb.mp4 at --frame-stride (video.mp4 + video.json)",
     )
+    parser.add_argument(
+        "--report",
+        action="store_true",
+        help="Damage check + fix loop; write report.json (outline/planes, not physical damage)",
+    )
+    parser.add_argument(
+        "--versus",
+        type=Path,
+        default=None,
+        help="Second capture to report beside --report (heights stay independent)",
+    )
     args = parser.parse_args(argv)
     want_planes = args.planes or args.tier is not None
+    if args.versus is not None and not args.report:
+        parser.error("--versus requires --report")
     if (
         not args.inspect
         and not args.cloud
@@ -133,10 +147,11 @@ def main(argv: list[str] | None = None) -> int:
         and not args.drift
         and not args.stills
         and not args.video
+        and not args.report
     ):
         parser.error(
             "pass --inspect, --cloud, --preview, --planes, --tier lidar, "
-            "--drift, --stills, and/or --video"
+            "--drift, --stills, --video, and/or --report"
         )
     out = args.out
     wrote_cloud = False
@@ -157,7 +172,7 @@ def main(argv: list[str] | None = None) -> int:
         print(cloud_text(result, out))
         args.preview = True
         wrote_cloud = True
-    if want_planes:
+    if want_planes or args.report:
         ply = _cloud_out(args.capture, out)
         points, _colors = _ensure_cloud(
             args.capture,
@@ -169,19 +184,45 @@ def main(argv: list[str] | None = None) -> int:
             from_ply=args.from_ply or wrote_cloud,
         )
         fitted = fit_planes(points)
-        print(planes_text(fitted, label=str(args.capture)))
-        plan_png = ply.parent / "preview_plan.png"
-        write_plan_preview(points, fitted.polygon_xz, plan_png, openings=fitted.openings)
-        print(f"plan PNG: {plan_png.resolve()}")
-        if args.tier is not None:
-            jpath, spath = write_plan_exports(
-                fitted,
-                ply.parent,
-                capture=str(args.capture),
-                tier=args.tier,
-            )
-            print(f"plan JSON: {jpath.resolve()}")
-            print(f"plan SVG: {spath.resolve()}")
+        if args.report:
+            report = fix_loop(fitted, capture=str(args.capture))
+            fitted = report.result
+            if args.versus is not None:
+                other_ply = Path("out") / args.versus.resolve().name / "cloud.ply"
+                o_stride = max(args.frame_stride, 24)
+                o_pix = max(args.pixel_stride, 8)
+                o_pts, _o_cols = _ensure_cloud(
+                    args.versus,
+                    out=other_ply,
+                    frame_stride=o_stride,
+                    pixel_stride=o_pix,
+                    min_confidence=args.min_confidence,
+                    invert_extrinsics=args.invert_extrinsics,
+                    from_ply=args.from_ply and other_ply.exists(),
+                )
+                other_fit = fit_planes(o_pts)
+                other = fix_loop(other_fit, capture=str(args.versus))
+                attach_versus(report, other)
+                other_path = write_report(other, other_ply.parent)
+                print(report_text(other))
+                print(f"versus report JSON: {other_path.resolve()}")
+            report_path = write_report(report, ply.parent)
+            print(report_text(report))
+            print(f"report JSON: {report_path.resolve()}")
+        if want_planes:
+            print(planes_text(fitted, label=str(args.capture)))
+            plan_png = ply.parent / "preview_plan.png"
+            write_plan_preview(points, fitted.polygon_xz, plan_png, openings=fitted.openings)
+            print(f"plan PNG: {plan_png.resolve()}")
+            if args.tier is not None:
+                jpath, spath = write_plan_exports(
+                    fitted,
+                    ply.parent,
+                    capture=str(args.capture),
+                    tier=args.tier,
+                )
+                print(f"plan JSON: {jpath.resolve()}")
+                print(f"plan SVG: {spath.resolve()}")
         if args.ceiling is not None:
             ceil_ply = Path("out") / args.ceiling.resolve().name / "cloud.ply"
             # heavier subsample: this dump is ~9745 frames
