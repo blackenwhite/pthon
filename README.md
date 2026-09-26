@@ -97,7 +97,9 @@ Writes `out/1a8384c3f6/report.json` and `out/c7d28f72c6/report.json`. `height_m`
 
 ## Current baseline
 
-Frozen at commit `405fee95` (`iteration 1 procceding plan`), before any algorithm change from `PROCEEDING_PLAN.md`.
+Frozen at commit `405fee95` (`iteration 1 procceding plan`), before any algorithm change from `PROCEEDING_PLAN.md`. The write-up is [BASELINE_REPORT.md](BASELINE_REPORT.md).
+
+Both captures produce a floor and a plan export in about two seconds from an existing PLY. `height_m` stays blocked, including on the look-up capture. Wall and opening counts change between repeats. Both footprints fell back to a wall-inlier hull. Fit residuals are not tape accuracy.
 
 `rmse_m` and `median_residual_m` are RANSAC fit error against the point cloud, not tape-measure or laser accuracy. `height_m` is null on both captures below. The `height_p95_minus_p05_m` figure is a percentile check, not a ceiling measurement.
 
