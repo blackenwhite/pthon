@@ -15,7 +15,7 @@ from src.cloud import (
     write_ply,
     write_preview_pngs,
 )
-from src.export import write_plan_exports
+from src.export import lidar_source_files, write_plan_exports
 from src.ingest import inspect_text, load_capture
 from src.media import export_stills, export_video, stills_text, video_text
 from src.planes import fit_planes, planes_text, write_plan_preview
@@ -184,11 +184,17 @@ def main(argv: list[str] | None = None) -> int:
             from_ply=args.from_ply or wrote_cloud,
         )
         fitted = fit_planes(points)
+        sources, origin = lidar_source_files(
+            args.capture, ply=ply, from_ply=args.from_ply and not wrote_cloud
+        )
         if args.report:
             report = fix_loop(fitted, capture=str(args.capture))
+            report.source_files = sources
+            report.cloud_origin = origin
             fitted = report.result
             if args.versus is not None:
                 other_ply = Path("out") / args.versus.resolve().name / "cloud.ply"
+                reuse_other = args.from_ply and other_ply.exists()
                 o_stride = max(args.frame_stride, 24)
                 o_pix = max(args.pixel_stride, 8)
                 o_pts, _o_cols = _ensure_cloud(
@@ -198,10 +204,17 @@ def main(argv: list[str] | None = None) -> int:
                     pixel_stride=o_pix,
                     min_confidence=args.min_confidence,
                     invert_extrinsics=args.invert_extrinsics,
-                    from_ply=args.from_ply and other_ply.exists(),
+                    from_ply=reuse_other,
                 )
                 other_fit = fit_planes(o_pts)
                 other = fix_loop(other_fit, capture=str(args.versus))
+                other_sources, other_origin = lidar_source_files(
+                    args.versus,
+                    ply=other_ply,
+                    from_ply=reuse_other,
+                )
+                other.source_files = other_sources
+                other.cloud_origin = other_origin
                 attach_versus(report, other)
                 other_path = write_report(other, other_ply.parent)
                 print(report_text(other))
@@ -220,6 +233,8 @@ def main(argv: list[str] | None = None) -> int:
                     ply.parent,
                     capture=str(args.capture),
                     tier=args.tier,
+                    source_files=sources,
+                    cloud_origin=origin,
                 )
                 print(f"plan JSON: {jpath.resolve()}")
                 print(f"plan SVG: {spath.resolve()}")
@@ -248,11 +263,16 @@ def main(argv: list[str] | None = None) -> int:
             write_plan_preview(c_pts, c_fit.polygon_xz, c_png, openings=c_fit.openings)
             print(f"ceiling-scan plan PNG: {c_png.resolve()}")
             if args.tier is not None:
+                c_sources, c_origin = lidar_source_files(
+                    args.ceiling, ply=ceil_ply, from_ply=False
+                )
                 cj, cs = write_plan_exports(
                     c_fit,
                     ceil_ply.parent,
                     capture=str(args.ceiling),
                     tier=args.tier,
+                    source_files=c_sources,
+                    cloud_origin=c_origin,
                 )
                 print(f"ceiling-scan JSON: {cj.resolve()}")
                 print(f"ceiling-scan SVG: {cs.resolve()}")

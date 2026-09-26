@@ -18,6 +18,38 @@ DISCLAIMER = (
 )
 
 SCHEMA = "cozmo.room_plan.v1"
+STATUS = "baseline"
+MEASUREMENT_STATUS = "estimated"
+ACCURACY_STATUS = "not_calibrated"
+PLAN_METHOD = "ransac_rgb_d_planes"
+
+# Files the metric cloud actually reads. imu.csv is required to recognise the
+# folder and is not part of plane fitting.
+LIDAR_CAPTURE_FILES = (
+    "camera_matrix.csv",
+    "odometry.csv",
+    "rgb.mp4",
+    "depth",
+    "confidence",
+)
+
+
+def lidar_source_files(
+    capture: Path,
+    *,
+    ply: Path | None = None,
+    from_ply: bool = False,
+) -> tuple[list[str], str]:
+    """Paths this export consumed, plus whether the cloud was rebuilt.
+
+    ``--from-ply`` fits planes on an existing cloud and does not reopen depth,
+    confidence, RGB, or odometry.
+    """
+    if from_ply:
+        files = [] if ply is None else [str(ply)]
+        return files, "existing_ply"
+    root = Path(capture)
+    return [str(root / name) for name in LIDAR_CAPTURE_FILES], "rebuilt_this_run"
 
 
 def _f(x: float) -> float:
@@ -58,11 +90,21 @@ def plan_to_dict(
     *,
     capture: str,
     tier: str = "lidar",
+    source_files: list[str] | None = None,
+    cloud_origin: str = "unspecified",
+    method: str = PLAN_METHOD,
 ) -> dict:
     height_blocked = result.height_m is None
     return {
         "schema": SCHEMA,
+        "status": STATUS,
         "tier": tier,
+        "input_tier": tier,
+        "source_files": list(source_files or []),
+        "cloud_origin": cloud_origin,
+        "method": method,
+        "measurement_status": MEASUREMENT_STATUS,
+        "accuracy_status": ACCURACY_STATUS,
         "capture": capture,
         "units": "metres",
         "disclaimer": DISCLAIMER,
@@ -174,7 +216,12 @@ def write_plan_svg(payload: dict, out_path: Path, *, px_per_m: float = 40.0) -> 
     )
     cap = payload.get("capture", "")
     disclaimer = escape(str(payload.get("disclaimer", DISCLAIMER))[:220])
-    title = escape(f"{cap}  tier={payload.get('tier')}  height={height_txt}")
+    title = escape(
+        f"{cap}  status={payload.get('status', STATUS)}  "
+        f"tier={payload.get('input_tier', payload.get('tier'))}  "
+        f"accuracy={payload.get('accuracy_status', ACCURACY_STATUS)}  "
+        f"height={height_txt}"
+    )
     body = "\n".join(
         [
             f'<rect x="0" y="0" width="{width:.0f}" height="{height:.0f}" fill="#fafafa" />',
@@ -203,8 +250,18 @@ def write_plan_exports(
     *,
     capture: str,
     tier: str = "lidar",
+    source_files: list[str] | None = None,
+    cloud_origin: str = "unspecified",
+    method: str = PLAN_METHOD,
 ) -> tuple[Path, Path]:
-    payload = plan_to_dict(result, capture=capture, tier=tier)
+    payload = plan_to_dict(
+        result,
+        capture=capture,
+        tier=tier,
+        source_files=source_files,
+        cloud_origin=cloud_origin,
+        method=method,
+    )
     json_path = write_plan_json(payload, out_dir / "plan.json")
     svg_path = write_plan_svg(payload, out_dir / "plan.svg")
     return json_path, svg_path

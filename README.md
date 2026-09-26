@@ -142,6 +142,30 @@ Preserved sample (the second `c00a170fe1` run, and the single `c7d28f72c6` run):
 
 `c7d28f72c6` still has no ceiling plane. The highest leftover horizontal was 0.64 m above the floor. Its footprint span is larger than the camera path (pose span about 8.3 × 9.1 m), which is the unstable polygon this baseline is recording, not a measured room size.
 
+## Provenance
+
+Each `plan.json` and `report.json` now states its own tier and limits. The console is not required to see that this export is an uncalibrated LiDAR estimate. The fields exist so a later photo or video run cannot be mistaken for a surveyed measurement.
+
+| Field | Value on this baseline | Why it is there |
+|---|---|---|
+| `status` | `baseline` | Marks the frozen RGB-D result, before a later geometry fix |
+| `input_tier` | `lidar` | Only the RGB-D path produces a metric plan. `tier` is the same value |
+| `source_files` | Capture files, or the PLY when `--from-ply` | Names what this run actually read |
+| `cloud_origin` | `rebuilt_this_run` or `existing_ply` | `--from-ply` does not reopen depth, confidence, RGB, or odometry |
+| `method` | `ransac_rgb_d_planes` on plans; `reconstruction_health_check` on reports | Names the algorithm that produced the file |
+| `measurement_status` | `estimated` | The geometry is a fit to the cloud |
+| `accuracy_status` | `not_calibrated` | Nothing here was checked against a tape or a laser |
+
+`imu.csv` sits in every Record3D folder and is required for the folder to load. Plane fitting does not read it, so it is not listed in `source_files`. The existing disclaimer stays: `rmse_m` is fit error, openings are occupancy-gap heuristics, and `height_m` is null unless that same capture has a ceiling plane. The SVG caption repeats `status`, `tier`, and `accuracy`.
+
+```bash
+python -m src store/c00a170fe1 --tier lidar --from-ply
+```
+
+With `--from-ply`, `source_files` is the existing `cloud.ply` and `cloud_origin` is `existing_ply`. A run without `--from-ply` lists `camera_matrix.csv`, `odometry.csv`, `rgb.mp4`, `depth`, and `confidence` under the capture, and sets `cloud_origin` to `rebuilt_this_run`. `--report` writes the same provenance block on `report.json`. A `--versus` capture gets its own block on its report and inside the primary report’s `versus` object.
+
+Wall and opening counts still change between repeats because Open3D floor RANSAC is unseeded. Photo and video inputs are not separate adapters yet. The next step is a script that derives benchmark inputs from `store/`.
+
 ## Tests
 
 ```bash

@@ -13,6 +13,7 @@ from pathlib import Path
 
 import numpy as np
 
+from src.export import ACCURACY_STATUS, MEASUREMENT_STATUS, STATUS
 from src.planes import (
     FittedPlane,
     PlaneResult,
@@ -23,6 +24,7 @@ from src.planes import (
 )
 
 SCHEMA = "cozmo.damage_report.v1"
+REPORT_METHOD = "reconstruction_health_check"
 DISCLAIMER = (
     "Findings describe reconstruction damage (exploded outline, duplicate walls, "
     "missing or implausible planes), not physical room damage and not tape-measure "
@@ -56,10 +58,21 @@ class ScanReport:
     result: PlaneResult
     versus: dict | None = None
     notes: list[str] = field(default_factory=list)
+    input_tier: str = "lidar"
+    source_files: list[str] = field(default_factory=list)
+    method: str = REPORT_METHOD
+    cloud_origin: str = "unspecified"
 
     def to_dict(self) -> dict:
         payload = {
             "schema": SCHEMA,
+            "status": STATUS,
+            "input_tier": self.input_tier,
+            "source_files": list(self.source_files),
+            "cloud_origin": self.cloud_origin,
+            "method": self.method,
+            "measurement_status": MEASUREMENT_STATUS,
+            "accuracy_status": ACCURACY_STATUS,
             "disclaimer": DISCLAIMER,
             "capture": self.capture,
             "passes": self.passes,
@@ -278,6 +291,13 @@ def _span_notes(a: ScanReport, b: ScanReport) -> list[str]:
 def attach_versus(primary: ScanReport, other: ScanReport) -> ScanReport:
     primary.versus = {
         "capture": other.capture,
+        "status": STATUS,
+        "input_tier": other.input_tier,
+        "source_files": list(other.source_files),
+        "cloud_origin": other.cloud_origin,
+        "method": other.method,
+        "measurement_status": MEASUREMENT_STATUS,
+        "accuracy_status": ACCURACY_STATUS,
         "passes": other.passes,
         "fixes": list(other.fixes),
         "before": other.before,

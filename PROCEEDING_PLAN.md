@@ -112,6 +112,8 @@ The commit history and README should tell the same story. The final README shoul
 
 ### Step 0 — Freeze the current baseline
 
+**Status:** Done. Commit `02d1929` (`step 0: freeze reproducible RGB-D baseline`). Code under test is `405fee95`. Logs are in `baseline/logs/`, counts in `baseline/freeze.json`, and one plan JSON/SVG/PNG per capture in `baseline/examples/`. The README “Current baseline” section records the commands. `rmse_m` is fit error, not tape accuracy. Open3D floor RANSAC is unseeded: two exports of the same `c00a170fe1` cloud returned 7 walls then 6, while `height_m` stayed blocked on both captures.
+
 **Objective:** Record the current repository state before changing the algorithm.
 
 **Why:** A fix-loop is impossible to defend if the before state is not reproducible.
@@ -135,6 +137,8 @@ step 0: freeze reproducible RGB-D baseline
 **README update:** Add a “Current baseline” section with commands, outputs, and a clear statement that residuals are fit errors rather than tape accuracy.
 
 ### Step 1 — Write the baseline report
+
+**Status:** Done. Commit `67e64e7` (`step 1: document baseline results and limitations`). The write-up is `BASELINE_REPORT.md`, linked from the README. Both frozen captures produce a floor and a plan; ceiling height stays blocked, including on `c7d28f72c6`; both footprints used the wall-inlier hull fallback.
 
 **Objective:** Turn the current implementation into a documented baseline rather than a collection of commands.
 
@@ -162,6 +166,8 @@ step 1: document baseline results and limitations
 **README update:** Link to the baseline report and summarise its main findings.
 
 ### Step 2 — Add formal result status and provenance
+
+**Status:** Done. `plan.json` and `report.json` carry `status`, `input_tier`, `source_files`, `cloud_origin`, `method`, `measurement_status`, and `accuracy_status`. `--from-ply` lists only the existing cloud. `imu.csv` is not listed because plane fitting does not read it. Fit residuals and opening heuristics are unchanged.
 
 **Objective:** Make every output explicit about its input tier, source files, method, and confidence status.
 

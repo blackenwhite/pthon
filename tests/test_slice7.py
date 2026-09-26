@@ -127,5 +127,12 @@ def test_cli_report_writes_json(mini_capture: Path, tmp_path: Path, capsys):
     assert "damage report:" in out
     payload = json.loads((tmp_path / "report.json").read_text())
     assert payload["schema"] == "cozmo.damage_report.v1"
+    assert payload["status"] == "baseline"
+    assert payload["input_tier"] == "lidar"
+    assert payload["method"] == "reconstruction_health_check"
+    assert payload["measurement_status"] == "estimated"
+    assert payload["accuracy_status"] == "not_calibrated"
+    assert payload["cloud_origin"] == "rebuilt_this_run"
+    assert any(name.endswith("odometry.csv") for name in payload["source_files"])
     assert "before" in payload and "after" in payload
     assert "physical room damage" in payload["disclaimer"]

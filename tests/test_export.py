@@ -6,7 +6,12 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from src.export import plan_to_dict, write_plan_exports, write_plan_svg
+from src.export import (
+    lidar_source_files,
+    plan_to_dict,
+    write_plan_exports,
+    write_plan_svg,
+)
 from src.planes import fit_planes
 from src.run import main
 from tests.test_planes import _box_cloud
@@ -17,7 +22,14 @@ def test_json_has_height_and_residuals_on_synthetic_box(tmp_path: Path):
     result = fit_planes(pts, voxel_m=0.05, distance_m=0.03, max_planes=8)
     payload = plan_to_dict(result, capture="synthetic-box", tier="lidar")
     assert payload["schema"] == "cozmo.room_plan.v1"
+    assert payload["status"] == "baseline"
     assert payload["tier"] == "lidar"
+    assert payload["input_tier"] == "lidar"
+    assert payload["method"] == "ransac_rgb_d_planes"
+    assert payload["measurement_status"] == "estimated"
+    assert payload["accuracy_status"] == "not_calibrated"
+    assert payload["source_files"] == []
+    assert payload["cloud_origin"] == "unspecified"
     assert payload["units"] == "metres"
     assert payload["height_m"] == pytest.approx(2.5, abs=0.12)
     assert payload["height_blocked"] is False
@@ -58,6 +70,17 @@ def test_json_height_null_when_no_ceiling(tmp_path: Path):
     assert data["height_m"] is None
 
 
+def test_from_ply_lists_only_the_cloud(tmp_path: Path):
+    ply = tmp_path / "cloud.ply"
+    files, origin = lidar_source_files(tmp_path / "cap", ply=ply, from_ply=True)
+    assert files == [str(ply)]
+    assert origin == "existing_ply"
+    rebuilt, origin = lidar_source_files(tmp_path / "cap", ply=ply, from_ply=False)
+    assert origin == "rebuilt_this_run"
+    assert all(not name.endswith("imu.csv") for name in rebuilt)
+    assert rebuilt[0].endswith("camera_matrix.csv")
+
+
 def test_svg_blocked_polygon(tmp_path: Path):
     payload = {
         "capture": "empty",
@@ -89,7 +112,41 @@ def test_tier_lidar_cli_writes_json_svg(mini_capture: Path, tmp_path: Path):
     assert rc == 0
     data = json.loads((tmp_path / "plan.json").read_text())
     assert data["tier"] == "lidar"
+    assert data["input_tier"] == "lidar"
+    assert data["status"] == "baseline"
+    assert data["accuracy_status"] == "not_calibrated"
+    assert data["measurement_status"] == "estimated"
+    assert data["cloud_origin"] == "rebuilt_this_run"
+    assert data["method"] == "ransac_rgb_d_planes"
+    root = mini_capture
+    assert data["source_files"] == [
+        str(root / "camera_matrix.csv"),
+        str(root / "odometry.csv"),
+        str(root / "rgb.mp4"),
+        str(root / "depth"),
+        str(root / "confidence"),
+    ]
+    assert "imu.csv" not in " ".join(data["source_files"])
+    assert "not_calibrated" in (tmp_path / "plan.svg").read_text()
     assert data["height_m"] is None
     assert data["height_blocked"] is True
+    rc = main(
+        [
+            str(mini_capture),
+            "--tier",
+            "lidar",
+            "--from-ply",
+            "--out",
+            str(ply),
+            "--frame-stride",
+            "1",
+            "--pixel-stride",
+            "1",
+        ]
+    )
+    assert rc == 0
+    reused = json.loads((tmp_path / "plan.json").read_text())
+    assert reused["cloud_origin"] == "existing_ply"
+    assert reused["source_files"] == [str(ply)]
     assert (tmp_path / "plan.svg").exists()
     assert (tmp_path / "preview_plan.png").exists()
