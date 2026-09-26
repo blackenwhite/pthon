@@ -80,7 +80,9 @@ The deferred items are not being ignored. They are being labelled as outside the
 
 ### Small step, small commit
 
-Each step below should produce one observable improvement and one small commit. Do not combine unrelated refactors with feature work.
+**The agent must not run `git commit` or `git push` for this plan. Nabajyoti creates commits manually after reviewing each step.**
+
+Each step below should produce one observable improvement and one small commit (by Nabajyoti, not the agent). Do not combine unrelated refactors with feature work.
 
 Every commit should include:
 
@@ -109,6 +111,9 @@ The README must be updated after each completed step. The assignment auditor sho
 The commit history and README should tell the same story. The final README should link to the baseline report, benchmark results, fix-loop report, output examples, and known limitations.
 
 ## 5. Executable step plan
+
+**DO NOT COMMIT — AGENT: implement the step, run tests, and update the README; leave all changes unstaged or staged only if Nabajyoti asked otherwise. Nabajyoti runs `git commit` (and push) himself.**
+
 
 ### Step 0 — Freeze the current baseline
 
@@ -167,7 +172,7 @@ step 1: document baseline results and limitations
 
 ### Step 2 — Add formal result status and provenance
 
-**Status:** Done. `plan.json` and `report.json` carry `status`, `input_tier`, `source_files`, `cloud_origin`, `method`, `measurement_status`, and `accuracy_status`. `--from-ply` lists only the existing cloud. `imu.csv` is not listed because plane fitting does not read it. Fit residuals and opening heuristics are unchanged.
+**Status:** Done. Commit `121d7fb` (`step 2: add result status and provenance metadata`). `plan.json` and `report.json` carry `status`, `input_tier`, `source_files`, `cloud_origin`, `method`, `measurement_status`, and `accuracy_status`. `--from-ply` lists only the existing cloud. `imu.csv` is not listed because plane fitting does not read it. Fit residuals and opening heuristics are unchanged.
 
 **Objective:** Make every output explicit about its input tier, source files, method, and confidence status.
 
