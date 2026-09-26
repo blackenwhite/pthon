@@ -1,11 +1,9 @@
-"""CLI. Slice 3: --inspect, --cloud, --preview, --planes."""
+"""CLI. Slice 4: --inspect, --cloud, --preview, --planes, --tier lidar."""
 
 from __future__ import annotations
 
 import argparse
 from pathlib import Path
-
-import numpy as np
 
 from src.cloud import (
     build_cloud,
@@ -14,6 +12,7 @@ from src.cloud import (
     write_ply,
     write_preview_pngs,
 )
+from src.export import write_plan_exports
 from src.ingest import inspect_text, load_capture
 from src.planes import fit_planes, planes_text, write_plan_preview
 
@@ -69,6 +68,12 @@ def main(argv: list[str] | None = None) -> int:
         help="RANSAC floor/walls/(ceiling) and write a 2D plan PNG",
     )
     parser.add_argument(
+        "--tier",
+        choices=["lidar"],
+        default=None,
+        help="Export plan.json + plan.svg from fitted planes (lidar = RGB-D + poses)",
+    )
+    parser.add_argument(
         "--ceiling",
         type=Path,
         default=None,
@@ -99,8 +104,9 @@ def main(argv: list[str] | None = None) -> int:
         help="Write PNG orthographic views next to the PLY (open these in Preview)",
     )
     args = parser.parse_args(argv)
-    if not args.inspect and not args.cloud and not args.preview and not args.planes:
-        parser.error("pass --inspect, --cloud, --preview, and/or --planes")
+    want_planes = args.planes or args.tier is not None
+    if not args.inspect and not args.cloud and not args.preview and not want_planes:
+        parser.error("pass --inspect, --cloud, --preview, --planes, and/or --tier lidar")
     out = args.out
     wrote_cloud = False
     if args.inspect:
@@ -120,7 +126,7 @@ def main(argv: list[str] | None = None) -> int:
         print(cloud_text(result, out))
         args.preview = True
         wrote_cloud = True
-    if args.planes:
+    if want_planes:
         ply = _cloud_out(args.capture, out)
         points, _colors = _ensure_cloud(
             args.capture,
@@ -136,6 +142,15 @@ def main(argv: list[str] | None = None) -> int:
         plan_png = ply.parent / "preview_plan.png"
         write_plan_preview(points, fitted.polygon_xz, plan_png)
         print(f"plan PNG: {plan_png.resolve()}")
+        if args.tier is not None:
+            jpath, spath = write_plan_exports(
+                fitted,
+                ply.parent,
+                capture=str(args.capture),
+                tier=args.tier,
+            )
+            print(f"plan JSON: {jpath.resolve()}")
+            print(f"plan SVG: {spath.resolve()}")
         if args.ceiling is not None:
             ceil_ply = Path("out") / args.ceiling.resolve().name / "cloud.ply"
             # heavier subsample: this dump is ~9745 frames
@@ -160,6 +175,15 @@ def main(argv: list[str] | None = None) -> int:
             c_png = ceil_ply.parent / "preview_plan.png"
             write_plan_preview(c_pts, c_fit.polygon_xz, c_png)
             print(f"ceiling-scan plan PNG: {c_png.resolve()}")
+            if args.tier is not None:
+                cj, cs = write_plan_exports(
+                    c_fit,
+                    ceil_ply.parent,
+                    capture=str(args.ceiling),
+                    tier=args.tier,
+                )
+                print(f"ceiling-scan JSON: {cj.resolve()}")
+                print(f"ceiling-scan SVG: {cs.resolve()}")
     if args.preview:
         ply = out or Path("out") / args.capture.resolve().name / "cloud.ply"
         if not ply.exists():

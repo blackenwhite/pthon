@@ -46,6 +46,18 @@ Reuse a PLY you already built:
 python -m src store/c00a170fe1 --planes --from-ply
 ```
 
+## Slice 4 — JSON + SVG
+
+One command fits the same planes and writes `plan.json` + `plan.svg` next to the PLY. Height is `null` unless a ceiling plane exists **on that capture**. Residuals in JSON are fit error, not tape.
+
+```bash
+python -m src store/c00a170fe1 --tier lidar
+python -m src store/c00a170fe1 --tier lidar --from-ply
+python -m src store/c7d28f72c6 --tier lidar --frame-stride 24 --pixel-stride 8
+```
+
+Open `out/<id>/plan.svg` in a browser or Preview. `--ceiling` still reports the second scan separately (not fused into the first JSON).
+
 ## Tests
 
 ```bash
