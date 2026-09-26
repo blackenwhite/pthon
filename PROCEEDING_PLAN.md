@@ -204,7 +204,7 @@ step 2: add result status and provenance metadata
 
 ### Step 3 — Add a reproducible dataset-preparation script
 
-**Status:** Done (uncommitted until Nabajyoti reviews). `python -m src.benchmark` regenerates `benchmark/` from `store/`. Photo PNGs are decoded from `rgb.mp4`; video is a copy of that file; LiDAR is a copied Record3D folder. `benchmark/manifest.json` states that stills are derived RGB, not native photographs. Generated blobs are gitignored; `benchmark/README.md` is the committed note.
+**Status:** Done. Commit `12af684` (`step 3: add reproducible benchmark file boundaries`). `python -m src.benchmark` regenerates `benchmark/` from `store/`. Photo PNGs are decoded from `rgb.mp4`; video is a copy of that file; LiDAR is a copied Record3D folder. `benchmark/manifest.json` states that stills are derived RGB, not native photographs. Generated blobs are gitignored; `benchmark/README.md` is the committed note.
 
 **Objective:** Derive logical photo, video, and LiDAR inputs from `store/` without using personal-room data.
 
@@ -239,7 +239,7 @@ step 3: add reproducible benchmark input preparation
 
 ### Step 4 — Add input adapters without changing reconstruction
 
-**Status:** Done (uncommitted until Nabajyoti reviews). `--tier photo|video|lidar` uses `src/adapters.py`. LiDAR still reads depth, confidence, intrinsics, and poses. Video reads only RGB video. Photo reads only top-level stills. Photo/video write `status=blocked` plans and cannot be combined with `--from-ply` or the cloud path.
+**Status:** Done. Commit `ca3ca46` (`step 4: add explicit photo video and lidar input adapters`). `--tier photo|video|lidar` uses `src/adapters.py`. LiDAR still reads depth, confidence, intrinsics, and poses. Video reads only RGB video. Photo reads only top-level stills. Photo/video write `status=blocked` plans and cannot be combined with `--from-ply` or the cloud path.
 
 **Objective:** Give photo, video, and LiDAR inputs a common interface while preserving the current working LiDAR path.
 
