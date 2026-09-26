@@ -164,7 +164,28 @@ python -m src store/c00a170fe1 --tier lidar --from-ply
 
 With `--from-ply`, `source_files` is the existing `cloud.ply` and `cloud_origin` is `existing_ply`. A run without `--from-ply` lists `camera_matrix.csv`, `odometry.csv`, `rgb.mp4`, `depth`, and `confidence` under the capture, and sets `cloud_origin` to `rebuilt_this_run`. `--report` writes the same provenance block on `report.json`. A `--versus` capture gets its own block on its report and inside the primary report’s `versus` object.
 
-Wall and opening counts still change between repeats because Open3D floor RANSAC is unseeded. Photo and video adapters are not wired yet. Derived inputs for those tiers now live under `benchmark/` (see below).
+Wall and opening counts still change between repeats because Open3D floor RANSAC is unseeded.
+
+## Input adapters
+
+`--tier` now names an adapter with hard file boundaries. The LiDAR path is unchanged. Photo and video do not invent a metric plan.
+
+```bash
+python -m src store/c00a170fe1 --tier lidar --from-ply
+python -m src benchmark/photo/room_01 --tier photo
+python -m src benchmark/video/room_01.mp4 --tier video
+python -m src benchmark/photo/room_01 --inspect
+```
+
+| Tier | Allowed inputs | Forbidden (present files are listed as `refused`, not opened) | Metric reconstruction |
+|---|---|---|---|
+| `lidar` | `depth/`, `confidence/`, `camera_matrix.csv`, `odometry.csv`, `rgb.mp4` | `imu.csv` is required to recognise the folder and is not used for fitting | Available (`ransac_rgb_d_planes`, still uncalibrated) |
+| `video` | One RGB video (`rgb.mp4` or a `.mp4` path) | `depth/`, `confidence/`, `odometry.csv`, `camera_matrix.csv`, `imu.csv` | Blocked (`status=blocked`, `measurement_status=not_implemented`) |
+| `photo` | Top-level stills (`.png` / `.jpg`) | `depth/`, `confidence/`, `odometry.csv`, `camera_matrix.csv`, `imu.csv`, `rgb.mp4`. Depth PNGs inside `depth/` are not stills. | Blocked, same JSON contract as video |
+
+`--inspect` without `--tier` classifies the path (Record3D folder, photo directory, or video file). `--tier photo` or `--tier video` writes `plan.json` / `plan.svg` under `out/<tier>_<name>/` with empty geometry. Combining those tiers with `--cloud`, `--planes`, `--from-ply`, `--drift`, or `--report` is rejected so a PLY cannot smuggle LiDAR into an RGB run.
+
+Derived stills under `benchmark/` remain decoded `rgb.mp4` frames, not native photographs. The next step is wall filtering on the LiDAR baseline.
 
 ## Derived benchmark inputs
 
@@ -184,7 +205,7 @@ or `python scripts/prepare_benchmark.py`. Default output is `benchmark/`. `--sto
 
 Room ids are stable: `c00a170fe1` → `room_01` (single room), `c7d28f72c6` → `room_02` (look-up / ceiling), `1a8384c3f6` → `room_03` (report dump). `benchmark/manifest.json` repeats that the stills are derived RGB frames. Generated `photo/`, `video/`, `lidar/`, and the manifest are gitignored; `benchmark/README.md` is the committed regeneration note.
 
-This step does not reconstruct from photo or video. Metric plans still come from the LiDAR/RGB-D path. The next step is explicit adapters that enforce those file boundaries.
+This step does not reconstruct from photo or video. Metric plans still come from the LiDAR/RGB-D path. Adapters for all three tiers are in `src/adapters.py`.
 
 ## Tests
 

@@ -239,6 +239,8 @@ step 3: add reproducible benchmark input preparation
 
 ### Step 4 — Add input adapters without changing reconstruction
 
+**Status:** Done (uncommitted until Nabajyoti reviews). `--tier photo|video|lidar` uses `src/adapters.py`. LiDAR still reads depth, confidence, intrinsics, and poses. Video reads only RGB video. Photo reads only top-level stills. Photo/video write `status=blocked` plans and cannot be combined with `--from-ply` or the cloud path.
+
 **Objective:** Give photo, video, and LiDAR inputs a common interface while preserving the current working LiDAR path.
 
 **Why:** A common interface lets us compare tiers and evolve the reconstruction code without duplicating the whole pipeline.

@@ -1,4 +1,4 @@
-"""CLI. Slices 1–7: inspect, cloud, planes, lidar export, drift, stills/video, damage report."""
+"""CLI. Slices 1–7 plus photo/video/lidar input adapters."""
 
 from __future__ import annotations
 
@@ -8,6 +8,13 @@ from pathlib import Path
 
 import numpy as np
 
+from src.adapters import (
+    AdapterError,
+    adapter_out_dir,
+    identify_tier,
+    open_input,
+    write_blocked_plan,
+)
 from src.cloud import (
     build_cloud,
     cloud_text,
@@ -57,7 +64,11 @@ def _ensure_cloud(
 
 def main(argv: list[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description="Cozmo room plan MVP")
-    parser.add_argument("capture", type=Path, help="Record3D capture directory")
+    parser.add_argument(
+        "capture",
+        type=Path,
+        help="Record3D folder, photo directory/still, or RGB video file",
+    )
     parser.add_argument(
         "--inspect",
         action="store_true",
@@ -75,9 +86,12 @@ def main(argv: list[str] | None = None) -> int:
     )
     parser.add_argument(
         "--tier",
-        choices=["lidar"],
+        choices=["photo", "video", "lidar"],
         default=None,
-        help="Export plan.json + plan.svg from fitted planes (lidar = RGB-D + poses)",
+        help=(
+            "Input adapter: lidar may use depth/poses; video may use RGB video "
+            "only; photo may use stills only. Photo/video metric plans are blocked."
+        ),
     )
     parser.add_argument(
         "--ceiling",
@@ -136,28 +150,75 @@ def main(argv: list[str] | None = None) -> int:
         help="Second capture to report beside --report (heights stay independent)",
     )
     args = parser.parse_args(argv)
-    want_planes = args.planes or args.tier is not None
+    explicit_tier = args.tier
+    rgb_tier = explicit_tier in ("photo", "video")
+    lidar_tier = explicit_tier == "lidar"
+    want_planes = args.planes or lidar_tier
     if args.versus is not None and not args.report:
         parser.error("--versus requires --report")
+    if rgb_tier and (
+        args.cloud
+        or args.planes
+        or args.preview
+        or args.drift
+        or args.report
+        or args.from_ply
+        or args.stills
+        or args.video
+        or args.ceiling is not None
+    ):
+        parser.error(
+            f"--tier {args.tier} cannot use depth, poses, a PLY, or the LiDAR "
+            "cloud/planes/report path; it only writes a blocked RGB plan"
+        )
     if (
         not args.inspect
         and not args.cloud
         and not args.preview
         and not want_planes
+        and not rgb_tier
         and not args.drift
         and not args.stills
         and not args.video
         and not args.report
     ):
         parser.error(
-            "pass --inspect, --cloud, --preview, --planes, --tier lidar, "
-            "--drift, --stills, --video, and/or --report"
+            "pass --inspect, --cloud, --preview, --planes, "
+            "--tier photo|video|lidar, --drift, --stills, --video, and/or --report"
         )
+
+    def _open_tier(tier: str):
+        try:
+            return open_input(args.capture, tier)
+        except (AdapterError, FileNotFoundError, ValueError) as exc:
+            parser.error(str(exc))
+            raise
+
+    if args.inspect and explicit_tier is None:
+        try:
+            detected = identify_tier(args.capture)
+        except AdapterError:
+            detected = "lidar"
+        if detected in ("photo", "video"):
+            print(_open_tier(detected).inspect_text())
+            return 0
+
+    if rgb_tier:
+        adapted = _open_tier(explicit_tier)
+        print(adapted.inspect_text())
+        out_dir = adapter_out_dir(args.capture, adapted.tier, args.out)
+        jpath, spath = write_blocked_plan(adapted, out_dir)
+        print(f"plan JSON: {jpath.resolve()} (metric reconstruction blocked)")
+        print(f"plan SVG: {spath.resolve()}")
+        return 0
+
     out = args.out
     wrote_cloud = False
-    if args.inspect:
-        cap = load_capture(args.capture)
-        print(inspect_text(cap))
+    if args.inspect and lidar_tier:
+        print(_open_tier("lidar").inspect_text())
+        print(inspect_text(load_capture(args.capture)))
+    elif args.inspect:
+        print(inspect_text(load_capture(args.capture)))
     if args.cloud:
         cap = load_capture(args.capture)
         out = out or Path("out") / cap.root.name / "cloud.ply"
