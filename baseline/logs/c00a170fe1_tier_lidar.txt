@@ -1,0 +1,39 @@
+=== planes: store/c00a170fe1 ===
+points: 428817  downsampled: 192770
+floor: inliers=9772  rmse_m=0.0228  median_resid_m=0.0197  normal=(0.049,0.998,0.036)  mean_xyz_m=(-0.599,0.335,1.343)
+floor_y_m (mean inliers): 0.3350
+walls: 7
+  wall0: inliers=6093  rmse_m=0.0231  median_resid_m=0.0200  normal=(0.763,-0.149,0.629)  mean_xyz_m=(-1.097,0.892,0.531)
+  wall1: inliers=5038  rmse_m=0.0230  median_resid_m=0.0200  normal=(0.798,-0.053,0.600)  mean_xyz_m=(-1.364,0.889,0.264)
+  wall2: inliers=5015  rmse_m=0.0232  median_resid_m=0.0202  normal=(0.984,-0.155,-0.085)  mean_xyz_m=(0.106,1.037,1.166)
+  wall3: inliers=4705  rmse_m=0.0231  median_resid_m=0.0200  normal=(-0.992,0.129,0.012)  mean_xyz_m=(-0.251,0.970,1.419)
+  wall4: inliers=4235  rmse_m=0.0231  median_resid_m=0.0198  normal=(-0.652,-0.020,0.758)  mean_xyz_m=(-0.782,1.013,2.250)
+  wall5: inliers=3920  rmse_m=0.0231  median_resid_m=0.0197  normal=(0.526,0.294,0.798)  mean_xyz_m=(-1.356,0.889,0.873)
+  wall6: inliers=3913  rmse_m=0.0231  median_resid_m=0.0201  normal=(-0.978,0.205,0.026)  mean_xyz_m=(-0.597,1.003,1.462)
+ceiling: BLOCKED (no ceiling plane on this capture)
+height_m: BLOCKED
+height_p95_minus_p05_m (percentile check, not a plane): 1.9106
+polygon_xz vertices (closed): 11
+  -4.723 2.320
+  -3.272 0.096
+  -0.615 -2.044
+  -0.570 -2.075
+  -0.147 -2.247
+  0.533 -2.311
+  1.401 -0.656
+  1.695 4.474
+  -0.002 4.979
+  -4.449 2.875
+  -4.722 2.368
+openings: 3
+  window wall2 width_m=1.760 height_m=1.639 xz=(0.08,0.88)-(0.23,2.56)
+  door wall6 width_m=1.360 height_m=1.084 xz=(-0.58,2.25)-(-0.61,0.97)
+  unknown wall6 width_m=0.560 height_m=1.102 xz=(-0.55,3.21)-(-0.56,2.73)
+note: highest leftover horizontal only 1.07 m above floor; not a ceiling
+note: polygon from wall-inlier convex hull (line intersections degenerate)
+note: no ceiling plane on this cloud (use the with_ceiling dump for height)
+note: openings heuristic: 3 gap(s); width from occupancy bins, not a door detector
+residuals are fit error, not tape-measure accuracy
+plan PNG: /Users/nabajyotimajumdar/F/Pthon/out/c00a170fe1/preview_plan.png
+plan JSON: /Users/nabajyotimajumdar/F/Pthon/out/c00a170fe1/plan.json
+plan SVG: /Users/nabajyotimajumdar/F/Pthon/out/c00a170fe1/plan.svg

@@ -1,0 +1,30 @@
+<svg xmlns="http://www.w3.org/2000/svg" width="565" height="747" viewBox="0 0 565 747">
+<rect x="0" y="0" width="565" height="747" fill="#fafafa" />
+<path d="M 48.00,434.37 L 52.73,443.32 L 147.67,591.46 L 178.32,635.17 L 188.32,643.29 L 435.62,539.51 L 517.26,209.29 L 503.70,110.93 L 174.68,48.00 L 85.68,57.06 L 48.00,434.37 Z" fill="rgba(147,197,253,0.25)" stroke="none" />
+<line x1="48.00" y1="434.37" x2="52.73" y2="443.32" stroke="#1d4ed8" stroke-width="3" />
+<line x1="52.73" y1="443.32" x2="147.67" y2="591.46" stroke="#1d4ed8" stroke-width="3" />
+<line x1="147.67" y1="591.46" x2="178.32" y2="635.17" stroke="#1d4ed8" stroke-width="3" />
+<line x1="178.32" y1="635.17" x2="188.32" y2="643.29" stroke="#1d4ed8" stroke-width="3" />
+<line x1="188.32" y1="643.29" x2="435.62" y2="539.51" stroke="#1d4ed8" stroke-width="3" />
+<line x1="435.62" y1="539.51" x2="517.26" y2="209.29" stroke="#1d4ed8" stroke-width="3" />
+<line x1="517.26" y1="209.29" x2="503.70" y2="110.93" stroke="#1d4ed8" stroke-width="3" />
+<line x1="503.70" y1="110.93" x2="174.68" y2="48.00" stroke="#1d4ed8" stroke-width="3" />
+<line x1="174.68" y1="48.00" x2="85.68" y2="57.06" stroke="#1d4ed8" stroke-width="3" />
+<line x1="85.68" y1="57.06" x2="48.00" y2="434.37" stroke="#1d4ed8" stroke-width="3" />
+<line x1="214.27" y1="383.29" x2="209.40" y2="418.15" stroke="#16a34a" stroke-width="6" stroke-linecap="round" />
+<line x1="338.67" y1="335.70" x2="325.95" y2="354.14" stroke="#16a34a" stroke-width="6" stroke-linecap="round" />
+<circle cx="48.00" cy="434.37" r="4" fill="#b91c1c" />
+<circle cx="52.73" cy="443.32" r="4" fill="#b91c1c" />
+<circle cx="147.67" cy="591.46" r="4" fill="#b91c1c" />
+<circle cx="178.32" cy="635.17" r="4" fill="#b91c1c" />
+<circle cx="188.32" cy="643.29" r="4" fill="#b91c1c" />
+<circle cx="435.62" cy="539.51" r="4" fill="#b91c1c" />
+<circle cx="517.26" cy="209.29" r="4" fill="#b91c1c" />
+<circle cx="503.70" cy="110.93" r="4" fill="#b91c1c" />
+<circle cx="174.68" cy="48.00" r="4" fill="#b91c1c" />
+<circle cx="85.68" cy="57.06" r="4" fill="#b91c1c" />
+<line x1="48.00" y1="661.29" x2="88.00" y2="661.29" stroke="#111" stroke-width="2" />
+<text x="48.00" y="677.29" font-size="12" fill="#111">1 m</text>
+<text x="48.00" y="719.29" font-size="12" fill="#111">store/c7d28f72c6  tier=lidar  height=BLOCKED</text>
+<text x="48.00" y="735.29" font-size="9" fill="#555">Residuals (rmse_m, median_residual_m) are RANSAC fit error against the point cloud, not tape-measure or laser accuracy. height_m is null unless a ceiling plane was found on this same capture; do not mix Y from two folder</text>
+</svg>

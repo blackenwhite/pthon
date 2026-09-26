@@ -95,6 +95,51 @@ python -m src store/1a8384c3f6 --report --versus store/c7d28f72c6 --frame-stride
 
 Writes `out/1a8384c3f6/report.json` and `out/c7d28f72c6/report.json`. `height_m` is `BLOCKED` unless that capture’s own cloud has a ceiling plane. The p95−p05 figure in the report is a percentile check, not a ceiling measurement.
 
+## Current baseline
+
+Frozen at commit `405fee95` (`iteration 1 procceding plan`), before any algorithm change from `PROCEEDING_PLAN.md`.
+
+`rmse_m` and `median_residual_m` are RANSAC fit error against the point cloud, not tape-measure or laser accuracy. `height_m` is null on both captures below. The `height_p95_minus_p05_m` figure is a percentile check, not a ceiling measurement.
+
+This freeze reused the clouds already in `out/` (that directory is gitignored):
+
+| Cloud | Points | File |
+|---|---:|---|
+| `out/c00a170fe1/cloud.ply` | 428,817 | 6.1 MB, built earlier with the default strides |
+| `out/c7d28f72c6/cloud.ply` | 297,183 | 4.3 MB, built earlier with `--frame-stride 24 --pixel-stride 8` |
+
+Rebuild those clouds from `store/`, then export the plan:
+
+```bash
+python -m src store/c00a170fe1 --cloud
+python -m src store/c7d28f72c6 --cloud --frame-stride 24 --pixel-stride 8
+python -m src store/c00a170fe1 --inspect
+python -m src store/c00a170fe1 --tier lidar --from-ply
+python -m src store/c7d28f72c6 --inspect
+python -m src store/c7d28f72c6 --tier lidar --from-ply --frame-stride 24 --pixel-stride 8
+```
+
+The stride flags only change a cloud rebuild. `--from-ply` fits planes on the existing PLY.
+
+Stdout and wall-clock time are in `baseline/logs/`. One preserved plan JSON, SVG, and PNG per capture is in `baseline/examples/`. A rerun produces the same kind of files. It does not reproduce the same wall count: Open3D `segment_plane` (used for the floor) is unseeded, so two back-to-back exports of `c00a170fe1` on the same PLY returned 7 walls / 3 openings / 11 polygon vertices, then 6 / 2 / 16. Both runs left `height_m` blocked and fell back to a wall-inlier convex hull because wall-line intersections were degenerate.
+
+Preserved sample (the second `c00a170fe1` run, and the single `c7d28f72c6` run):
+
+| | `c00a170fe1` | `c7d28f72c6` |
+|---|---:|---:|
+| Role | single room | look-up / ceiling capture |
+| Poses | 1,715 over 37.17 s, path 14.49 m | 9,745 over 214.93 s, path 99.76 m |
+| Points / downsampled | 428,817 / 192,770 | 297,183 / 250,000 |
+| Walls | 6 | 6 |
+| Openings | 2 (window, unknown) | 2 (door, door) |
+| Polygon | 16 vertices, hull fallback, span 5.48 × 7.18 m | 10 vertices, hull fallback, span 11.73 × 14.88 m |
+| Height | BLOCKED | BLOCKED |
+| Floor fit RMSE | 0.023 m | 0.023 m |
+| Inspect runtime | 0.76 s | 0.98 s |
+| Plan-export runtime | 1.69 s on the first run; the preserved sample is a second export and was not timed | 1.90 s |
+
+`c7d28f72c6` still has no ceiling plane. The highest leftover horizontal was 0.64 m above the floor. Its footprint span is larger than the camera path (pose span about 8.3 × 9.1 m), which is the unstable polygon this baseline is recording, not a measured room size.
+
 ## Tests
 
 ```bash

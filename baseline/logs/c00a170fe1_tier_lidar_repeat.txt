@@ -1,0 +1,42 @@
+=== planes: store/c00a170fe1 ===
+points: 428817  downsampled: 192770
+floor: inliers=9602  rmse_m=0.0230  median_resid_m=0.0200  normal=(0.009,0.998,0.066)  mean_xyz_m=(-0.584,0.312,1.258)
+floor_y_m (mean inliers): 0.3125
+walls: 6
+  wall0: inliers=6077  rmse_m=0.0229  median_resid_m=0.0196  normal=(-0.824,0.063,-0.563)  mean_xyz_m=(-1.145,0.913,0.448)
+  wall1: inliers=5241  rmse_m=0.0231  median_resid_m=0.0197  normal=(-0.973,0.223,0.050)  mean_xyz_m=(0.112,0.973,1.338)
+  wall2: inliers=5020  rmse_m=0.0231  median_resid_m=0.0200  normal=(-0.825,0.158,-0.543)  mean_xyz_m=(-1.407,0.912,0.254)
+  wall3: inliers=4227  rmse_m=0.0231  median_resid_m=0.0201  normal=(0.805,0.028,0.593)  mean_xyz_m=(-1.014,0.974,0.983)
+  wall4: inliers=3959  rmse_m=0.0231  median_resid_m=0.0197  normal=(-0.582,0.034,0.812)  mean_xyz_m=(-0.735,1.002,2.312)
+  wall5: inliers=3899  rmse_m=0.0231  median_resid_m=0.0201  normal=(0.953,-0.281,-0.115)  mean_xyz_m=(-0.442,1.008,1.648)
+ceiling: BLOCKED (no ceiling plane on this capture)
+height_m: BLOCKED
+height_p95_minus_p05_m (percentile check, not a plane): 1.9106
+polygon_xz vertices (closed): 16
+  -3.372 0.423
+  -3.364 0.408
+  -0.816 -1.905
+  -0.774 -1.933
+  0.285 -2.430
+  0.332 -2.408
+  0.645 -2.162
+  2.107 4.233
+  0.745 4.735
+  0.559 4.748
+  0.130 4.579
+  -0.359 4.361
+  -2.542 3.131
+  -2.571 3.089
+  -2.869 2.633
+  -2.942 2.439
+openings: 2
+  window wall1 width_m=1.760 height_m=1.570 xz=(0.18,2.57)-(0.09,0.90)
+  unknown wall5 width_m=0.560 height_m=1.199 xz=(-0.31,2.75)-(-0.25,3.23)
+note: highest leftover horizontal only 1.07 m above floor; not a ceiling
+note: polygon from wall-inlier convex hull (line intersections degenerate)
+note: no ceiling plane on this cloud (use the with_ceiling dump for height)
+note: openings heuristic: 2 gap(s); width from occupancy bins, not a door detector
+residuals are fit error, not tape-measure accuracy
+plan PNG: /Users/nabajyotimajumdar/F/Pthon/out/c00a170fe1/preview_plan.png
+plan JSON: /Users/nabajyotimajumdar/F/Pthon/out/c00a170fe1/plan.json
+plan SVG: /Users/nabajyotimajumdar/F/Pthon/out/c00a170fe1/plan.svg

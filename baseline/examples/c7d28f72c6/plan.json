@@ -1,0 +1,253 @@
+{
+  "schema": "cozmo.room_plan.v1",
+  "tier": "lidar",
+  "capture": "store/c7d28f72c6",
+  "units": "metres",
+  "disclaimer": "Residuals (rmse_m, median_residual_m) are RANSAC fit error against the point cloud, not tape-measure or laser accuracy. height_m is null unless a ceiling plane was found on this same capture; do not mix Y from two folders. Openings are occupancy gaps on walls (heuristic), not a trained detector.",
+  "n_points": 297183,
+  "n_downsampled": 250000,
+  "floor": {
+    "kind": "floor",
+    "n_inliers": 12916,
+    "rmse_m": 0.023189,
+    "median_residual_m": 0.019893,
+    "normal": [
+      -0.013215,
+      0.999753,
+      -0.017886
+    ],
+    "mean_xyz_m": [
+      1.692975,
+      -0.077744,
+      4.724108
+    ],
+    "plane_abcd": [
+      -0.013215,
+      0.999753,
+      -0.017886,
+      0.185309
+    ]
+  },
+  "ceiling": null,
+  "walls": [
+    {
+      "kind": "wall",
+      "n_inliers": 4123,
+      "rmse_m": 0.022808,
+      "median_residual_m": 0.019764,
+      "normal": [
+        0.996956,
+        -0.077279,
+        0.010306
+      ],
+      "mean_xyz_m": [
+        -0.792382,
+        0.173899,
+        3.721075
+      ],
+      "plane_abcd": [
+        0.996956,
+        -0.077279,
+        0.010306,
+        0.765127
+      ]
+    },
+    {
+      "kind": "wall",
+      "n_inliers": 3910,
+      "rmse_m": 0.022945,
+      "median_residual_m": 0.01955,
+      "normal": [
+        -0.839748,
+        -0.175397,
+        0.513868
+      ],
+      "mean_xyz_m": [
+        1.230668,
+        0.174668,
+        3.676077
+      ],
+      "plane_abcd": [
+        -0.839748,
+        -0.175397,
+        0.513868,
+        -0.824642
+      ]
+    },
+    {
+      "kind": "wall",
+      "n_inliers": 3898,
+      "rmse_m": 0.02294,
+      "median_residual_m": 0.019928,
+      "normal": [
+        -0.819536,
+        -0.094222,
+        0.565229
+      ],
+      "mean_xyz_m": [
+        2.026904,
+        0.174392,
+        3.712363
+      ],
+      "plane_abcd": [
+        -0.819536,
+        -0.094222,
+        0.565229,
+        -0.420617
+      ]
+    },
+    {
+      "kind": "wall",
+      "n_inliers": 3532,
+      "rmse_m": 0.023018,
+      "median_residual_m": 0.019769,
+      "normal": [
+        -0.97994,
+        -0.144888,
+        0.136839
+      ],
+      "mean_xyz_m": [
+        -0.153584,
+        0.109284,
+        3.346865
+      ],
+      "plane_abcd": [
+        -0.97994,
+        -0.144888,
+        0.136839,
+        -0.592798
+      ]
+    },
+    {
+      "kind": "wall",
+      "n_inliers": 3496,
+      "rmse_m": 0.02321,
+      "median_residual_m": 0.020171,
+      "normal": [
+        -0.397162,
+        0.247066,
+        0.883867
+      ],
+      "mean_xyz_m": [
+        2.018118,
+        0.04702,
+        5.398884
+      ],
+      "plane_abcd": [
+        -0.397162,
+        0.247066,
+        0.883867,
+        -3.982404
+      ]
+    },
+    {
+      "kind": "wall",
+      "n_inliers": 3059,
+      "rmse_m": 0.02311,
+      "median_residual_m": 0.020065,
+      "normal": [
+        0.799025,
+        0.094719,
+        0.59379
+      ],
+      "mean_xyz_m": [
+        1.562029,
+        0.230469,
+        5.411489
+      ],
+      "plane_abcd": [
+        0.799025,
+        0.094719,
+        0.59379,
+        -4.483034
+      ]
+    }
+  ],
+  "height_m": null,
+  "height_blocked": true,
+  "height_p05_p95_m": 2.859126,
+  "polygon_xz_m": [
+    [
+      -4.21857,
+      2.72642
+    ],
+    [
+      -4.10028,
+      2.50267
+    ],
+    [
+      -1.7267,
+      -1.201
+    ],
+    [
+      -0.96068,
+      -2.29369
+    ],
+    [
+      -0.71045,
+      -2.49669
+    ],
+    [
+      5.47204,
+      0.09787
+    ],
+    [
+      7.51286,
+      8.35337
+    ],
+    [
+      7.17385,
+      10.81228
+    ],
+    [
+      -1.0515,
+      12.38557
+    ],
+    [
+      -3.27645,
+      12.15898
+    ]
+  ],
+  "openings": [
+    {
+      "kind": "door",
+      "wall_index": 3,
+      "width_m": 0.96,
+      "height_m": 1.218151,
+      "sill_m": 0.0,
+      "start_xz_m": [
+        -0.061926,
+        4.003255
+      ],
+      "end_xz_m": [
+        -0.183628,
+        3.131711
+      ],
+      "occupancy": 0.03125,
+      "note": "gap in wall occupancy; width from bins, not a detected frame"
+    },
+    {
+      "kind": "door",
+      "wall_index": 2,
+      "width_m": 0.64,
+      "height_m": 1.18679,
+      "sill_m": 0.0,
+      "start_xz_m": [
+        3.048163,
+        5.193106
+      ],
+      "end_xz_m": [
+        2.73022,
+        4.732116
+      ],
+      "occupancy": 0.0,
+      "note": "gap in wall occupancy; width from bins, not a detected frame"
+    }
+  ],
+  "notes": [
+    "highest leftover horizontal only 0.64 m above floor; not a ceiling",
+    "polygon from wall-inlier convex hull (line intersections degenerate)",
+    "no ceiling plane on this cloud (use the with_ceiling dump for height)",
+    "openings heuristic: 2 gap(s); width from occupancy bins, not a door detector"
+  ]
+}

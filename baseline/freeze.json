@@ -1,0 +1,97 @@
+{
+  "commit": "405fee956afae1058d2f28846a449e53862dcc3b",
+  "commit_subject": "iteration 1 procceding plan",
+  "note": "Plane export reused existing out/<id>/cloud.ply files. Open3D segment_plane is unseeded, so wall, opening, and polygon counts can change on a rerun. height_m stayed blocked. Residuals are fit error, not tape accuracy.",
+  "clouds": {
+    "c00a170fe1": {
+      "ply": "out/c00a170fe1/cloud.ply",
+      "n_points": 428817,
+      "built_with": "default --frame-stride 12 --pixel-stride 4 (cloud not rebuilt during this freeze)"
+    },
+    "c7d28f72c6": {
+      "ply": "out/c7d28f72c6/cloud.ply",
+      "n_points": 297183,
+      "built_with": "--frame-stride 24 --pixel-stride 8 (cloud not rebuilt during this freeze)"
+    }
+  },
+  "runs": [
+    {
+      "capture": "store/c00a170fe1",
+      "command": "python -m src store/c00a170fe1 --inspect",
+      "stdout": "baseline/logs/c00a170fe1_inspect.txt",
+      "runtime_s": 0.76,
+      "preserved_artifacts": false
+    },
+    {
+      "capture": "store/c00a170fe1",
+      "command": "python -m src store/c00a170fe1 --tier lidar --from-ply",
+      "stdout": "baseline/logs/c00a170fe1_tier_lidar.txt",
+      "runtime_s": 1.69,
+      "preserved_artifacts": false,
+      "n_points": 428817,
+      "n_downsampled": 192770,
+      "walls": 7,
+      "openings": 3,
+      "polygon_vertices": 11,
+      "polygon_status": "polygon from wall-inlier convex hull (line intersections degenerate)",
+      "height_status": "BLOCKED",
+      "height_m": null
+    },
+    {
+      "capture": "store/c00a170fe1",
+      "command": "python -m src store/c00a170fe1 --tier lidar --from-ply",
+      "stdout": "baseline/logs/c00a170fe1_tier_lidar_repeat.txt",
+      "runtime_s": null,
+      "preserved_artifacts": true,
+      "artifacts": [
+        "baseline/examples/c00a170fe1/plan.json",
+        "baseline/examples/c00a170fe1/plan.svg",
+        "baseline/examples/c00a170fe1/preview_plan.png"
+      ],
+      "n_points": 428817,
+      "n_downsampled": 192770,
+      "walls": 6,
+      "openings": 2,
+      "opening_kinds": ["window", "unknown"],
+      "polygon_vertices": 16,
+      "polygon_span_xz_m": [5.48, 7.178],
+      "polygon_status": "polygon from wall-inlier convex hull (line intersections degenerate)",
+      "height_status": "BLOCKED",
+      "height_m": null,
+      "height_p05_p95_m": 1.910638,
+      "floor_rmse_m": 0.022974
+    },
+    {
+      "capture": "store/c7d28f72c6",
+      "command": "python -m src store/c7d28f72c6 --inspect",
+      "stdout": "baseline/logs/c7d28f72c6_inspect.txt",
+      "runtime_s": 0.98,
+      "preserved_artifacts": false
+    },
+    {
+      "capture": "store/c7d28f72c6",
+      "command": "python -m src store/c7d28f72c6 --tier lidar --from-ply --frame-stride 24 --pixel-stride 8",
+      "stdout": "baseline/logs/c7d28f72c6_tier_lidar.txt",
+      "runtime_s": 1.9,
+      "preserved_artifacts": true,
+      "artifacts": [
+        "baseline/examples/c7d28f72c6/plan.json",
+        "baseline/examples/c7d28f72c6/plan.svg",
+        "baseline/examples/c7d28f72c6/preview_plan.png"
+      ],
+      "n_points": 297183,
+      "n_downsampled": 250000,
+      "walls": 6,
+      "openings": 2,
+      "opening_kinds": ["door", "door"],
+      "polygon_vertices": 10,
+      "polygon_span_xz_m": [11.731, 14.882],
+      "polygon_status": "polygon from wall-inlier convex hull (line intersections degenerate)",
+      "height_status": "BLOCKED",
+      "height_m": null,
+      "height_p05_p95_m": 2.859126,
+      "floor_rmse_m": 0.023189,
+      "ceiling_note": "highest leftover horizontal only 0.64 m above floor; not a ceiling"
+    }
+  ]
+}

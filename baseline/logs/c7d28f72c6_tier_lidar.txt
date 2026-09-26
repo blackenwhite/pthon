@@ -1,0 +1,36 @@
+=== planes: store/c7d28f72c6 ===
+points: 297183  downsampled: 250000
+floor: inliers=12916  rmse_m=0.0232  median_resid_m=0.0199  normal=(-0.013,1.000,-0.018)  mean_xyz_m=(1.693,-0.078,4.724)
+floor_y_m (mean inliers): -0.0777
+walls: 6
+  wall0: inliers=4123  rmse_m=0.0228  median_resid_m=0.0198  normal=(0.997,-0.077,0.010)  mean_xyz_m=(-0.792,0.174,3.721)
+  wall1: inliers=3910  rmse_m=0.0229  median_resid_m=0.0195  normal=(-0.840,-0.175,0.514)  mean_xyz_m=(1.231,0.175,3.676)
+  wall2: inliers=3898  rmse_m=0.0229  median_resid_m=0.0199  normal=(-0.820,-0.094,0.565)  mean_xyz_m=(2.027,0.174,3.712)
+  wall3: inliers=3532  rmse_m=0.0230  median_resid_m=0.0198  normal=(-0.980,-0.145,0.137)  mean_xyz_m=(-0.154,0.109,3.347)
+  wall4: inliers=3496  rmse_m=0.0232  median_resid_m=0.0202  normal=(-0.397,0.247,0.884)  mean_xyz_m=(2.018,0.047,5.399)
+  wall5: inliers=3059  rmse_m=0.0231  median_resid_m=0.0201  normal=(0.799,0.095,0.594)  mean_xyz_m=(1.562,0.230,5.411)
+ceiling: BLOCKED (no ceiling plane on this capture)
+height_m: BLOCKED
+height_p95_minus_p05_m (percentile check, not a plane): 2.8591
+polygon_xz vertices (closed): 10
+  -4.219 2.726
+  -4.100 2.503
+  -1.727 -1.201
+  -0.961 -2.294
+  -0.710 -2.497
+  5.472 0.098
+  7.513 8.353
+  7.174 10.812
+  -1.052 12.386
+  -3.276 12.159
+openings: 2
+  door wall3 width_m=0.960 height_m=1.218 xz=(-0.06,4.00)-(-0.18,3.13)
+  door wall2 width_m=0.640 height_m=1.187 xz=(3.05,5.19)-(2.73,4.73)
+note: highest leftover horizontal only 0.64 m above floor; not a ceiling
+note: polygon from wall-inlier convex hull (line intersections degenerate)
+note: no ceiling plane on this cloud (use the with_ceiling dump for height)
+note: openings heuristic: 2 gap(s); width from occupancy bins, not a door detector
+residuals are fit error, not tape-measure accuracy
+plan PNG: /Users/nabajyotimajumdar/F/Pthon/out/c7d28f72c6/preview_plan.png
+plan JSON: /Users/nabajyotimajumdar/F/Pthon/out/c7d28f72c6/plan.json
+plan SVG: /Users/nabajyotimajumdar/F/Pthon/out/c7d28f72c6/plan.svg

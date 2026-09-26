@@ -1,0 +1,13 @@
+root: /Users/nabajyotimajumdar/F/Pthon/store/c00a170fe1
+K:
+[[1.5996957e+03 0.0000000e+00 9.5551050e+02]
+ [0.0000000e+00 1.5996957e+03 7.1780840e+02]
+ [0.0000000e+00 0.0000000e+00 1.0000000e+00]]
+poses: 1715  duration_s: 37.17  path_m: 14.49
+xyz_min: [-2.5537004  -0.19323483 -0.73739356]
+xyz_max: [1.0630363 0.0895255 4.042382 ]
+xyz_span_m: [3.6167367  0.28276033 4.77977556]
+depth pngs: 1715  confidence pngs: 1715
+rgb: size=(1920, 1440) fps=46.122814881219185 frames=1715
+per-frame fx (first/last): 1597.89 / 1599.70
+depth samples: {'n_read': 5, 'frames': [{'frame': '000000.png', 'shape': [192, 256], 'dtype': 'uint16', 'min': 506, 'max': 1688, 'p50_valid': 938.0, 'valid_frac': 1.0}, {'frame': '000428.png', 'shape': [192, 256], 'dtype': 'uint16', 'min': 982, 'max': 2594, 'p50_valid': 1720.0, 'valid_frac': 1.0}, {'frame': '000857.png', 'shape': [192, 256], 'dtype': 'uint16', 'min': 516, 'max': 3418, 'p50_valid': 1740.0, 'valid_frac': 1.0}, {'frame': '001285.png', 'shape': [192, 256], 'dtype': 'uint16', 'min': 615, 'max': 1850, 'p50_valid': 1060.0, 'valid_frac': 1.0}, {'frame': '001714.png', 'shape': [192, 256], 'dtype': 'uint16', 'min': 1137, 'max': 3732, 'p50_valid': 1676.0, 'valid_frac': 1.0}]}
