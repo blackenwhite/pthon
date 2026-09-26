@@ -142,11 +142,13 @@ def build_cloud(
     invert_extrinsics: bool = False,
     z_min: float = 0.2,
     z_max: float = 8.0,
+    poses: list[Pose] | None = None,
 ) -> CloudResult:
     if cap.rgb_size is None:
         raise ValueError("RGB size unknown; cannot scale K to depth")
     rgb_wh = cap.rgb_size
-    poses = cap.poses[:: max(1, frame_stride)]
+    src_poses = cap.poses if poses is None else poses
+    poses = src_poses[:: max(1, frame_stride)]
     wanted = {int(p.frame) for p in poses}
 
     video = cv2.VideoCapture(str(cap.root / "rgb.mp4"))

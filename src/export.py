@@ -13,7 +13,8 @@ from src.planes import FittedPlane, PlaneResult
 DISCLAIMER = (
     "Residuals (rmse_m, median_residual_m) are RANSAC fit error against the "
     "point cloud, not tape-measure or laser accuracy. height_m is null unless "
-    "a ceiling plane was found on this same capture; do not mix Y from two folders."
+    "a ceiling plane was found on this same capture; do not mix Y from two folders. "
+    "Openings are occupancy gaps on walls (heuristic), not a trained detector."
 )
 
 SCHEMA = "cozmo.room_plan.v1"
@@ -78,7 +79,22 @@ def plan_to_dict(
             else None
         ),
         "polygon_xz_m": _polygon_vertices(result.polygon_xz),
+        "openings": [_opening_dict(op) for op in result.openings],
         "notes": list(result.notes),
+    }
+
+
+def _opening_dict(op) -> dict:
+    return {
+        "kind": op.kind,
+        "wall_index": int(op.wall_index),
+        "width_m": _f(op.width_m),
+        "height_m": _f(op.height_m) if op.height_m is not None else None,
+        "sill_m": _f(op.sill_m) if op.sill_m is not None else None,
+        "start_xz_m": [_f(op.start_xz[0]), _f(op.start_xz[1])],
+        "end_xz_m": [_f(op.end_xz[0]), _f(op.end_xz[1])],
+        "occupancy": _f(op.occupancy),
+        "note": op.note,
     }
 
 
@@ -134,6 +150,15 @@ def write_plan_svg(payload: dict, out_path: Path, *, px_per_m: float = 40.0) -> 
             f'<line x1="{a[0]:.2f}" y1="{a[1]:.2f}" x2="{b[0]:.2f}" y2="{b[1]:.2f}" '
             f'stroke="#1d4ed8" stroke-width="3" />'
         )
+    opening_lines = []
+    for op in payload.get("openings") or []:
+        a = xy(*op["start_xz_m"])
+        b = xy(*op["end_xz_m"])
+        color = {"door": "#16a34a", "window": "#ea580c"}.get(op.get("kind"), "#6b7280")
+        opening_lines.append(
+            f'<line x1="{a[0]:.2f}" y1="{a[1]:.2f}" x2="{b[0]:.2f}" y2="{b[1]:.2f}" '
+            f'stroke="{color}" stroke-width="6" stroke-linecap="round" />'
+        )
     dots = []
     for p, q in pairs[:-1]:
         dots.append(f'<circle cx="{p:.2f}" cy="{q:.2f}" r="4" fill="#b91c1c" />')
@@ -155,6 +180,7 @@ def write_plan_svg(payload: dict, out_path: Path, *, px_per_m: float = 40.0) -> 
             f'<rect x="0" y="0" width="{width:.0f}" height="{height:.0f}" fill="#fafafa" />',
             f'<path d="{d}" fill="rgba(147,197,253,0.25)" stroke="none" />',
             *wall_lines,
+            *opening_lines,
             *dots,
             f'<line x1="{bar_x0:.2f}" y1="{bar_y:.2f}" x2="{bar_x1:.2f}" y2="{bar_y:.2f}" '
             f'stroke="#111" stroke-width="2" />',

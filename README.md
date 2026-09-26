@@ -58,6 +58,23 @@ python -m src store/c7d28f72c6 --tier lidar --frame-stride 24 --pixel-stride 8
 
 Open `out/<id>/plan.svg` in a browser or Preview. `--ceiling` still reports the second scan separately (not fused into the first JSON).
 
+## Slice 5 — openings + drift ablation
+
+Openings are interior occupancy gaps on fitted walls (heuristic). They show up on `--planes` / `--tier lidar` in stdout, `plan.json`, `plan.svg`, and `preview_plan.png` (green door / orange window).
+
+```bash
+python -m src store/c00a170fe1 --tier lidar --from-ply
+```
+
+Pose-graph vs raw ARKit odometry (sequential ICP + nearby loop closures). Writes `drift.json` and `drift_path.png`:
+
+```bash
+python -m src store/c00a170fe1 --drift --from-ply
+python -m src store/c00a170fe1 --tier lidar --drift --from-ply
+```
+
+This is an ablation, not a claim that drift is solved. Openings are not a trained door detector.
+
 ## Tests
 
 ```bash

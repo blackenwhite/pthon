@@ -27,6 +27,7 @@ def test_json_has_height_and_residuals_on_synthetic_box(tmp_path: Path):
     assert "tape-measure" in payload["disclaimer"]
     assert len(payload["walls"]) >= 3
     assert len(payload["polygon_xz_m"]) >= 4
+    assert "openings" in payload
     jpath, spath = write_plan_exports(
         result, tmp_path, capture="synthetic-box", tier="lidar"
     )

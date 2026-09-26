@@ -1,9 +1,12 @@
-"""CLI. Slice 4: --inspect, --cloud, --preview, --planes, --tier lidar."""
+"""CLI. Slice 5: --inspect, --cloud, --preview, --planes, --tier lidar, --drift."""
 
 from __future__ import annotations
 
 import argparse
+import json
 from pathlib import Path
+
+import numpy as np
 
 from src.cloud import (
     build_cloud,
@@ -15,6 +18,7 @@ from src.cloud import (
 from src.export import write_plan_exports
 from src.ingest import inspect_text, load_capture
 from src.planes import fit_planes, planes_text, write_plan_preview
+from src.posegraph import drift_text, refine_pose_graph, write_drift_preview
 
 
 def _cloud_out(capture: Path, explicit: Path | None) -> Path:
@@ -103,10 +107,23 @@ def main(argv: list[str] | None = None) -> int:
         action="store_true",
         help="Write PNG orthographic views next to the PLY (open these in Preview)",
     )
+    parser.add_argument(
+        "--drift",
+        action="store_true",
+        help="Pose-graph vs raw odometry ablation (drift.json + drift_path.png)",
+    )
     args = parser.parse_args(argv)
     want_planes = args.planes or args.tier is not None
-    if not args.inspect and not args.cloud and not args.preview and not want_planes:
-        parser.error("pass --inspect, --cloud, --preview, --planes, and/or --tier lidar")
+    if (
+        not args.inspect
+        and not args.cloud
+        and not args.preview
+        and not want_planes
+        and not args.drift
+    ):
+        parser.error(
+            "pass --inspect, --cloud, --preview, --planes, --tier lidar, and/or --drift"
+        )
     out = args.out
     wrote_cloud = False
     if args.inspect:
@@ -140,7 +157,7 @@ def main(argv: list[str] | None = None) -> int:
         fitted = fit_planes(points)
         print(planes_text(fitted, label=str(args.capture)))
         plan_png = ply.parent / "preview_plan.png"
-        write_plan_preview(points, fitted.polygon_xz, plan_png)
+        write_plan_preview(points, fitted.polygon_xz, plan_png, openings=fitted.openings)
         print(f"plan PNG: {plan_png.resolve()}")
         if args.tier is not None:
             jpath, spath = write_plan_exports(
@@ -173,7 +190,7 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
             c_png = ceil_ply.parent / "preview_plan.png"
-            write_plan_preview(c_pts, c_fit.polygon_xz, c_png)
+            write_plan_preview(c_pts, c_fit.polygon_xz, c_png, openings=c_fit.openings)
             print(f"ceiling-scan plan PNG: {c_png.resolve()}")
             if args.tier is not None:
                 cj, cs = write_plan_exports(
@@ -193,6 +210,26 @@ def main(argv: list[str] | None = None) -> int:
         print("PNG previews (open these in Preview, not the .ply):")
         for p in pngs:
             print(f"  {p.resolve()}")
+    if args.drift:
+        cap = load_capture(args.capture)
+        ply = _cloud_out(args.capture, out)
+        drift_dir = ply.parent
+        d_stride = max(args.frame_stride, 24)
+        d_pix = max(args.pixel_stride, 8)
+        drift = refine_pose_graph(
+            cap,
+            frame_stride=d_stride,
+            pixel_stride=d_pix,
+            min_confidence=args.min_confidence,
+            invert_extrinsics=args.invert_extrinsics,
+        )
+        print(drift_text(drift, label=str(args.capture)))
+        jpath = drift_dir / "drift.json"
+        jpath.parent.mkdir(parents=True, exist_ok=True)
+        jpath.write_text(json.dumps(drift.to_dict(), indent=2) + "\n")
+        png = write_drift_preview(drift, drift_dir / "drift_path.png")
+        print(f"drift JSON: {jpath.resolve()}")
+        print(f"drift PNG: {png.resolve()}")
     return 0
 
 

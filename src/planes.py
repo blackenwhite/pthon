@@ -10,6 +10,7 @@ import numpy as np
 import open3d as o3d
 
 from src.cloud import _axis_limits, _height_colors, _raster
+from src.openings import Opening, detect_openings
 
 HORIZONTAL_DOT = 0.85  # |n · Y|
 VERTICAL_DOT = 0.30  # |n · Y| below this → wall
@@ -49,6 +50,7 @@ class PlaneResult:
     height_p05_p95_m: float | None
     n_points: int
     n_downsampled: int
+    openings: list[Opening] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
 
 
@@ -488,6 +490,14 @@ def fit_planes(
     if ceiling is None:
         notes.append("no ceiling plane on this cloud (use the with_ceiling dump for height)")
 
+    openings = detect_openings(xyz, floor, walls, distance_m=max(distance_m * 2.0, 0.08))
+    if openings:
+        notes.append(
+            f"openings heuristic: {len(openings)} gap(s); width from occupancy bins, not a door detector"
+        )
+    else:
+        notes.append("openings heuristic: none (interior occupancy gaps only)")
+
     return PlaneResult(
         floor=floor,
         ceiling=ceiling,
@@ -498,6 +508,7 @@ def fit_planes(
         height_p05_p95_m=height_pct,
         n_points=n_all,
         n_downsampled=n_ds,
+        openings=openings,
         notes=notes,
     )
 
@@ -545,6 +556,14 @@ def planes_text(result: PlaneResult, *, label: str) -> str:
             lines.append(f"  {x:.3f} {z:.3f}")
     else:
         lines.append("polygon_xz: BLOCKED (too few vertices)")
+    lines.append(f"openings: {len(result.openings)}")
+    for op in result.openings:
+        htxt = "null" if op.height_m is None else f"{op.height_m:.3f}"
+        lines.append(
+            f"  {op.kind} wall{op.wall_index} width_m={op.width_m:.3f} "
+            f"height_m={htxt} xz=({op.start_xz[0]:.2f},{op.start_xz[1]:.2f})-"
+            f"({op.end_xz[0]:.2f},{op.end_xz[1]:.2f})"
+        )
     for n in result.notes:
         lines.append(f"note: {n}")
     lines.append("residuals are fit error, not tape-measure accuracy")
@@ -555,6 +574,7 @@ def write_plan_preview(
     points: np.ndarray,
     polygon_xz: np.ndarray,
     out_path: Path,
+    openings: list[Opening] | None = None,
 ) -> Path:
     """Top-down XZ with height colours and the 2D polygon overlay."""
     out_path.parent.mkdir(parents=True, exist_ok=True)
@@ -566,6 +586,12 @@ def write_plan_preview(
     h, w = img.shape[:2]
     span_u = u1 - u0
     span_v = v1 - v0
+
+    def xz_px(xz: np.ndarray) -> tuple[int, int]:
+        col = int((float(xz[0]) - u0) / span_u * (w - 1))
+        row = int((v1 - float(xz[1])) / span_v * (h - 1))
+        return col, row
+
     if polygon_xz.shape[0] >= 3:
         cols = ((polygon_xz[:, 0] - u0) / span_u * (w - 1)).astype(np.int32)
         rows = ((v1 - polygon_xz[:, 1]) / span_v * (h - 1)).astype(np.int32)
@@ -573,6 +599,13 @@ def write_plan_preview(
         cv2.polylines(img, [pts], isClosed=True, color=(255, 255, 0), thickness=2)
         for px, py in pts.reshape(-1, 2):
             cv2.circle(img, (int(px), int(py)), 4, (255, 80, 80), -1)
+    for op in openings or []:
+        a = xz_px(op.start_xz)
+        b = xz_px(op.end_xz)
+        color = (40, 220, 90) if op.kind == "door" else (255, 160, 40)
+        if op.kind == "unknown":
+            color = (200, 200, 200)
+        cv2.line(img, a, b, color, 5)
     bgr = cv2.cvtColor(img, cv2.COLOR_RGB2BGR)
     cv2.imwrite(str(out_path), bgr)
     return out_path
