@@ -266,6 +266,8 @@ step 4: add explicit photo video and lidar input adapters
 
 ### Step 5 — Improve wall selection
 
+**Status:** Done. Implemented in `src/walls.py`, not committed (Nabajyoti commits). Horizontal planes now use the seeded numpy sampler, with Open3D only as a fallback, so a second export of the same PLY repeats the wall count. The filter records every drop. On `c00a170fe1`, walls went from 7 then 6 in the freeze to a stable 4 (2 low confidence), with 6 rejected (1 tilted, 5 near-parallel). On `c7d28f72c6`, walls went from 6 to a stable 5 (3 low), with 5 near-parallel duplicates rejected. `height_m` stays blocked. Both footprints are still the wall-inlier hull.
+
 **Objective:** Reduce false wall planes caused by furniture and other vertical objects.
 
 **Why:** This is the most visible weakness in the current baseline and the highest-value geometry improvement per unit of time.

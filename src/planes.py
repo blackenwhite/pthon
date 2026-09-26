@@ -23,6 +23,7 @@ class FittedPlane:
     rmse_m: float
     median_residual_m: float
     kind: str  # floor | ceiling | wall | other
+    confidence: str = "ok"  # ok | low — low means the furniture filter kept it with a caveat
 
     @property
     def normal(self) -> np.ndarray:
@@ -40,6 +41,15 @@ class FittedPlane:
 
 
 @dataclass
+class RejectedPlane:
+    """A vertical plane that was not used as a wall, with the reason it lost."""
+
+    plane: FittedPlane
+    code: str
+    detail: str
+
+
+@dataclass
 class PlaneResult:
     floor: FittedPlane | None
     ceiling: FittedPlane | None
@@ -52,6 +62,7 @@ class PlaneResult:
     n_downsampled: int
     openings: list[Opening] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
+    rejected_walls: list[RejectedPlane] = field(default_factory=list)
 
 
 def downsample_points(
@@ -184,11 +195,15 @@ def _segment_one(
 ) -> tuple[np.ndarray, np.ndarray] | None:
     if rng is None:
         rng = np.random.default_rng(1)
-    # Walls: Open3D peels table after table and never samples a vertical hypothesis.
-    if require == "vertical":
-        return _segment_one_numpy(
+    # Seeded sampler. Open3D's segment_plane has no seed, so a floor refit changed
+    # which points were left for the walls and the wall count jumped between runs.
+    if require in ("vertical", "horizontal"):
+        got = _segment_one_numpy(
             xyz, distance_m=distance_m, n_iter=n_iter, rng=rng, require=require
         )
+        if got is not None or require == "vertical":
+            return got
+    # Horizontal fallback only: Open3D peels non-horizontal planes until the densest floor remains.
     work = xyz
     for _ in range(12):
         got = _o3d_segment(work, distance_m, n_iter)
@@ -494,7 +509,16 @@ def fit_planes(
     for model, pts in raw_walls:
         walls.append(_to_fitted(model, pts, "wall"))
         remaining = remaining[_residuals(remaining, model) >= distance_m]
-    walls = _dedupe_walls(walls)
+    # Local import: src.walls imports the plane types defined above.
+    from src.walls import select_walls
+
+    walls, rejected_walls = select_walls(walls, floor)
+    for item in rejected_walls:
+        notes.append(f"rejected wall: {item.code} {item.detail}")
+    n_low = sum(1 for w in walls if w.confidence == "low")
+    notes.append(
+        f"wall filter: kept {len(walls)} (low={n_low}), rejected {len(rejected_walls)}"
+    )
 
     ceiling = None
     if remaining.shape[0] >= min_h:
@@ -559,6 +583,7 @@ def fit_planes(
         n_downsampled=n_ds,
         openings=openings,
         notes=notes,
+        rejected_walls=rejected_walls,
     )
 
 
@@ -583,9 +608,14 @@ def planes_text(result: PlaneResult, *, label: str) -> str:
         lines.append(f"floor_y_m (mean inliers): {result.floor.mean_xyz[1]:.4f}")
     else:
         lines.append("floor: BLOCKED (no horizontal plane)")
-    lines.append(f"walls: {len(result.walls)}")
+    lines.append(f"walls: {len(result.walls)}  rejected: {len(result.rejected_walls)}")
     for i, w in enumerate(result.walls):
-        lines.append("  " + _plane_line(f"wall{i}", w))
+        extra = "" if w.confidence == "ok" else f"  confidence={w.confidence}"
+        lines.append("  " + _plane_line(f"wall{i}", w) + extra)
+    for item in result.rejected_walls:
+        lines.append(
+            f"  rejected {item.code}: inliers={item.plane.n_inliers}  {item.detail}"
+        )
     if result.ceiling:
         lines.append(_plane_line("ceiling", result.ceiling))
         lines.append(f"ceiling_y_m (mean inliers): {result.ceiling.mean_xyz[1]:.4f}")

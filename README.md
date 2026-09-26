@@ -30,7 +30,7 @@ open out/c00a170fe1/preview_top_rgb.png out/c00a170fe1/preview_top_height.png ou
 
 ## Slice 3 — floor, walls, height
 
-RANSAC planes: Open3D voxel downsample + `segment_plane` for floor/ceiling; orientation-constrained numpy RANSAC for walls (Open3D always returns the densest plane, which in this scan is furniture). Floor and walls from `single_room`. **Ceiling height only from the same scan that looked up** (`single_scan_with_ceiling`) — do not mix Y from two folders.
+RANSAC planes: voxel downsample, then a seeded numpy sampler for the floor, ceiling, and walls. Open3D `segment_plane` is only the fallback when that sampler finds no horizontal plane. It has no seed, so a refit used to change which points were left for the walls. Walls stay orientation-constrained because Open3D’s densest plane on these scans is furniture. Floor and walls from `single_room`. **Ceiling height only from the same scan that looked up** (`single_scan_with_ceiling`) — do not mix Y from two folders. After the vertical planes are fit, a furniture filter drops tilted slabs and near-parallel copies and writes the reason on each rejected plane. See [Wall filtering](#wall-filtering).
 
 ```bash
 python -m src store/c00a170fe1 --planes
@@ -164,7 +164,7 @@ python -m src store/c00a170fe1 --tier lidar --from-ply
 
 With `--from-ply`, `source_files` is the existing `cloud.ply` and `cloud_origin` is `existing_ply`. A run without `--from-ply` lists `camera_matrix.csv`, `odometry.csv`, `rgb.mp4`, `depth`, and `confidence` under the capture, and sets `cloud_origin` to `rebuilt_this_run`. `--report` writes the same provenance block on `report.json`. A `--versus` capture gets its own block on its report and inside the primary report’s `versus` object.
 
-Wall and opening counts still change between repeats because Open3D floor RANSAC is unseeded.
+Repeating a plan export on the same PLY now keeps the same wall count. The floor sampler is seeded. The frozen baseline above was not: Open3D `segment_plane` had no seed, so `c00a170fe1` came out as 7 walls and then 6.
 
 ## Input adapters
 
@@ -185,7 +185,43 @@ python -m src benchmark/photo/room_01 --inspect
 
 `--inspect` without `--tier` classifies the path (Record3D folder, photo directory, or video file). `--tier photo` or `--tier video` writes `plan.json` / `plan.svg` under `out/<tier>_<name>/` with empty geometry. Combining those tiers with `--cloud`, `--planes`, `--from-ply`, `--drift`, or `--report` is rejected so a PLY cannot smuggle LiDAR into an RGB run.
 
-Derived stills under `benchmark/` remain decoded `rgb.mp4` frames, not native photographs. The next step is wall filtering on the LiDAR baseline.
+Derived stills under `benchmark/` remain decoded `rgb.mp4` frames, not native photographs.
+
+## Wall filtering
+
+Vertical RANSAC was treating furniture and a second copy of the same wall as extra walls. A cabinet face is vertical, dense, and a few tens of centimetres in front of the real wall. A tilted plane through clutter also clears the old “mostly vertical” cutoff. The filter in `src/walls.py` runs after that sampler. It does not delete a plane quietly: every drop is a `rejected_walls` entry on `plan.json` and a `rejected wall:` note, with a reason code. A plane that is only mildly tilted, or that sits inside the floor hull, stays in `walls` with `confidence` `low`.
+
+Rules, in order:
+
+- `tilted_plane` — the normal is more than about 16° off perpendicular to the floor (`|n · floor| > 0.28`).
+- `short_vertical_extent` — the inliers’ height core (10th to 90th percentile above the floor) is under 0.85 m.
+- `short_span` — the along-wall core is under 0.70 m.
+- `fragmented_support` / `sparse_support` — the body of the plane does not form a continuous run of at least 1 m.
+- `interior_patch` — a short plane whose points sit inside the floor hull rather than on its edge.
+- `near_parallel_duplicate` — same horizontal direction (normal agreement above 0.97) and less than 0.55 m away. The more upright plane is kept; if they are equally upright, the one closer to the floor boundary is kept.
+- `off_axis_interior` — a short interior plane that does not lie on one of the two dominant room directions.
+
+On the frozen clouds the rules that actually fired were `tilted_plane` and `near_parallel_duplicate`. The other codes are covered by synthetic tests (a short cabinet, an inner parallel face, a steep plane). Two back-to-back exports of the same PLY now return the same wall inlier counts. The floor fit that feeds this filter is the seeded sampler, so the leftover cloud no longer changes between runs. Open3D is still the fallback if that sampler finds no horizontal plane.
+
+```bash
+python -m src store/c00a170fe1 --tier lidar --from-ply
+python -m src store/c7d28f72c6 --tier lidar --from-ply --frame-stride 24 --pixel-stride 8
+```
+
+| | Frozen baseline | After this filter (same count on a second run) |
+|---|---|---|
+| `c00a170fe1` walls | 7, then 6 | 4 (2 of them `confidence=low`) |
+| `c00a170fe1` rejected | not recorded | 6 (1 `tilted_plane`, 5 `near_parallel_duplicate`) |
+| `c00a170fe1` openings | 3, then 2 | 2 |
+| `c00a170fe1` polygon | 11 then 16 vertices, span 5.48 × 7.18 m, wall-inlier hull | 7 vertices, span 6.31 × 7.44 m, still the wall-inlier hull. Floor span on this run is 6.49 × 6.79 m |
+| `c7d28f72c6` walls | 6 | 5 (3 of them `confidence=low`) |
+| `c7d28f72c6` rejected | not recorded | 5, all `near_parallel_duplicate` |
+| `c7d28f72c6` openings | 2 | 2 |
+| `c7d28f72c6` polygon | 10 vertices, span 11.73 × 14.88 m, wall-inlier hull | 11 vertices, span 11.61 × 15.62 m, still the wall-inlier hull. Floor span on this run is 11.62 × 15.12 m |
+| Height | BLOCKED on both | BLOCKED on both |
+| Floor fit RMSE | 0.023 m | 0.023 m |
+
+`height_m` is still null, including on the look-up capture. The polygon is still the wall-inlier hull because wall-line intersections are degenerate. `c7d28f72c6`’s footprint is still larger than that capture’s camera path (about 8.3 × 9.1 m). Fit residuals are still not tape accuracy. The next step is ceiling detection on the same capture.
 
 ## Derived benchmark inputs
 

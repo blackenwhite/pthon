@@ -73,6 +73,7 @@ def _plane_dict(p: FittedPlane | None) -> dict | None:
         "normal": _xyz(n),
         "mean_xyz_m": _xyz(m),
         "plane_abcd": [_f(c) for c in p.abc_d],
+        "confidence": p.confidence,
     }
 
 
@@ -113,6 +114,7 @@ def plan_to_dict(
         "floor": _plane_dict(result.floor),
         "ceiling": _plane_dict(result.ceiling),
         "walls": [_plane_dict(w) for w in result.walls],
+        "rejected_walls": [_rejected_dict(item) for item in result.rejected_walls],
         "height_m": _f(result.height_m) if result.height_m is not None else None,
         "height_blocked": height_blocked,
         "height_p05_p95_m": (
@@ -124,6 +126,14 @@ def plan_to_dict(
         "openings": [_opening_dict(op) for op in result.openings],
         "notes": list(result.notes),
     }
+
+
+def _rejected_dict(item) -> dict:
+    payload = _plane_dict(item.plane)
+    assert payload is not None
+    payload["reason"] = item.code
+    payload["detail"] = item.detail
+    return payload
 
 
 def _opening_dict(op) -> dict:
