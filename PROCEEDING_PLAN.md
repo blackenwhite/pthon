@@ -295,6 +295,8 @@ step 5: filter furniture-like vertical planes
 
 ### Step 6 — Improve ceiling detection
 
+**Status:** Done. Implemented in `src/ceiling.py`, not committed (Nabajyoti commits). The search tries up to six horizontal planes in the upper band and records every drop. A plane is kept only if it is 1.6–4.5 m above the floor, wide, filled in, and has empty space above it. On `c00a170fe1`, height stays blocked (6 rejected: 2 `too_low`, 2 `occupied_above`, 2 `sparse_coverage`; highest candidate 2.12 m, above-ratio 0.58). On `c7d28f72c6`, height stays blocked (6 rejected: 2 `too_low`, 4 `occupied_above`; highest candidate 2.07 m, above-ratio 0.37). A second run repeats those codes. Wall counts stay 4 and 5. No default height is filled in. The README “Ceiling detection” section has the before/after.
+
 **Objective:** Recover ceiling height when a genuine same-capture ceiling plane is present.
 
 **Why:** Ceiling height is a visible part of the output contract, and the supplied ceiling capture currently remains blocked.

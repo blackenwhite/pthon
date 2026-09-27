@@ -221,7 +221,31 @@ python -m src store/c7d28f72c6 --tier lidar --from-ply --frame-stride 24 --pixel
 | Height | BLOCKED on both | BLOCKED on both |
 | Floor fit RMSE | 0.023 m | 0.023 m |
 
-`height_m` is still null, including on the look-up capture. The polygon is still the wall-inlier hull because wall-line intersections are degenerate. `c7d28f72c6`’s footprint is still larger than that capture’s camera path (about 8.3 × 9.1 m). Fit residuals are still not tape accuracy. The next step is ceiling detection on the same capture.
+`height_m` was still null after the wall filter, including on the look-up capture. The polygon is still the wall-inlier hull because wall-line intersections are degenerate. `c7d28f72c6`’s footprint is still larger than that capture’s camera path (about 8.3 × 9.1 m). Fit residuals are still not tape accuracy. Ceiling search is the next section.
+
+## Ceiling detection
+
+The old search took one horizontal plane from the points left after the walls, above the 70th percentile of the whole cloud. On a floor-heavy scan that percentile sits near furniture, so the one shot locked onto a low plane and stopped. Before this change that plane was 1.13 m above the floor on `c00a170fe1` and 0.67 m on `c7d28f72c6`, and `height_m` stayed null.
+
+`src/ceiling.py` now searches the downsampled cloud at least 1.45 m above the floor, up to six horizontal candidates, with the same seeded sampler as the floor. A candidate is kept only when all of these hold:
+
+- height is between 1.6 m and 4.5 m (the same gate the reconstruction report already uses);
+- at least 80 inliers, and the inliers’ core span (10th to 90th percentile) is at least 1.2 m in both X and Z;
+- those inliers fill at least 45% of that span, so a small patch plus a ring of wall points does not count;
+- the band 0.12–0.45 m above the plane has fewer than half as many points as the plane itself (`occupied_above` when the ratio is under 2);
+- the plane is denser than the band just below it, so a slice through a volume of points does not count.
+
+Every drop is a `rejected_ceilings` entry on `plan.json` and a `rejected ceiling:` note. Nothing fills in 2.4 m. Wall counts are unchanged, because this search does not remove points from the wall fit.
+
+On the frozen clouds the search still blocks height. The best planes that clear 1.6 m still have points continuing above them (above-ratio about 0.3–0.8, need 2). A second run of each cloud repeats the same rejection codes.
+
+| | Before this search | After (same codes on a second run) |
+|---|---|---|
+| `c00a170fe1` `height_m` | BLOCKED (leftover plane 1.13 m) | BLOCKED. 6 rejected: 2 `too_low`, 2 `occupied_above`, 2 `sparse_coverage`. Highest candidate 2.12 m, above-ratio 0.58, dropped as `sparse_coverage` |
+| `c7d28f72c6` `height_m` | BLOCKED (leftover plane 0.67 m) | BLOCKED. 6 rejected: 2 `too_low`, 4 `occupied_above`. Highest plane 2.07 m, above-ratio 0.37 |
+| Walls | 4 and 5 | 4 and 5, same low-confidence counts |
+
+The look-up capture does not contain a sheet with empty space above it. The points above 1.6 m keep going; they are not a ceiling plane. The polygon and the fit residuals are unchanged. The next step is a bounded footprint.
 
 ## Derived benchmark inputs
 

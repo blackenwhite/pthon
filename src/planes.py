@@ -63,6 +63,7 @@ class PlaneResult:
     openings: list[Opening] = field(default_factory=list)
     notes: list[str] = field(default_factory=list)
     rejected_walls: list[RejectedPlane] = field(default_factory=list)
+    rejected_ceilings: list[RejectedPlane] = field(default_factory=list)
 
 
 def downsample_points(
@@ -520,29 +521,15 @@ def fit_planes(
         f"wall filter: kept {len(walls)} (low={n_low}), rejected {len(rejected_walls)}"
     )
 
-    ceiling = None
-    if remaining.shape[0] >= min_h:
-        y_hi = float(np.percentile(xyz[:, 1], 70.0))
-        high = remaining[remaining[:, 1] >= y_hi]
-        pool = high if high.shape[0] >= 80 else remaining
-        cgot = _segment_one(
-            pool, distance_m=distance_m, n_iter=500, rng=rng, require="horizontal"
-        )
-        if cgot is not None:
-            model, _ = cgot
-            idx = np.flatnonzero(_residuals(remaining, model) < distance_m)
-            if idx.size >= 50:
-                cand = _to_fitted(model, remaining[idx], "ceiling")
-                if floor is not None:
-                    dy = float(cand.mean_xyz[1] - floor.mean_xyz[1])
-                    if dy >= 1.2:
-                        ceiling = cand
-                    else:
-                        notes.append(
-                            f"highest leftover horizontal only {dy:.2f} m above floor; not a ceiling"
-                        )
-                else:
-                    ceiling = cand
+    # Ceiling is searched on the full downsampled cloud, not on whatever
+    # the wall sampler left behind. A table in the leftovers used to win
+    # the single RANSAC shot and hide anything higher.
+    from src.ceiling import select_ceiling
+
+    ceiling, rejected_ceilings, ceiling_notes = select_ceiling(
+        xyz, floor, distance_m=distance_m
+    )
+    notes.extend(ceiling_notes)
 
     polygon = np.zeros((0, 2), dtype=np.float64)
     if floor is not None:
@@ -559,9 +546,6 @@ def fit_planes(
     y = points[:, 1]
     p05, p95 = np.percentile(y, [5.0, 95.0])
     height_pct = float(p95 - p05)
-
-    if ceiling is None:
-        notes.append("no ceiling plane on this cloud (use the with_ceiling dump for height)")
 
     openings = detect_openings(xyz, floor, walls, distance_m=max(distance_m * 2.0, 0.08))
     if openings:
@@ -584,6 +568,7 @@ def fit_planes(
         openings=openings,
         notes=notes,
         rejected_walls=rejected_walls,
+        rejected_ceilings=rejected_ceilings,
     )
 
 
@@ -621,6 +606,10 @@ def planes_text(result: PlaneResult, *, label: str) -> str:
         lines.append(f"ceiling_y_m (mean inliers): {result.ceiling.mean_xyz[1]:.4f}")
     else:
         lines.append("ceiling: BLOCKED (no ceiling plane on this capture)")
+    for item in result.rejected_ceilings:
+        lines.append(
+            f"  rejected ceiling {item.code}: inliers={item.plane.n_inliers}  {item.detail}"
+        )
     if result.height_m is not None:
         lines.append(f"height_m (ceiling_y - floor_y, same scan): {result.height_m:.4f}")
     else:

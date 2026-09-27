@@ -115,6 +115,9 @@ def plan_to_dict(
         "ceiling": _plane_dict(result.ceiling),
         "walls": [_plane_dict(w) for w in result.walls],
         "rejected_walls": [_rejected_dict(item) for item in result.rejected_walls],
+        "rejected_ceilings": [
+            _rejected_dict(item) for item in result.rejected_ceilings
+        ],
         "height_m": _f(result.height_m) if result.height_m is not None else None,
         "height_blocked": height_blocked,
         "height_p05_p95_m": (
