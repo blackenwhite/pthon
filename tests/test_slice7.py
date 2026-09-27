@@ -66,7 +66,7 @@ def test_near_parallel_wall_does_not_explode_outline():
     # Meets the x=0 wall about 80 m away, and still crosses the room.
     rogue = _wall([26.0, 0.0, 1.0, -80.0], _edge_pts("x", 3.0, n=40))
     poly, method, _how = polygon_from_walls(floor, [*_room_walls(), rogue])
-    assert method in {"wall_lines", "wall_inlier_hull", "floor_hull"}
+    assert method in {"wall_lines", "wall_support_rect", "wall_inlier_hull", "floor_hull"}
     span_x = float(poly[:, 0].max() - poly[:, 0].min())
     span_z = float(poly[:, 1].max() - poly[:, 1].min())
     assert span_x < 12.0

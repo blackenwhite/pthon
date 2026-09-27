@@ -114,6 +114,17 @@ def test_outline_past_the_floor_margin_uses_the_floor_hull():
     assert footprint_quality(method, poly) == "warning"
 
 
+def test_two_axis_supports_recover_a_rectangle():
+    floor = _floor()
+    walls = _room_walls()
+    poly, method, note = polygon_from_walls(floor, walls)
+    assert method in {"wall_lines", "wall_support_rect"}
+    assert footprint_quality(method, poly) == "ok"
+    assert float(poly[:, 0].max() - poly[:, 0].min()) > 3.0
+    assert float(poly[:, 1].max() - poly[:, 1].min()) > 4.0
+    assert "support" in note or "wall ∩ floor" in note
+
+
 def test_no_walls_uses_the_floor_hull():
     floor = _floor()
     poly, method, note = polygon_from_walls(floor, [])

@@ -455,11 +455,70 @@ def footprint_quality(method: str, polygon: np.ndarray) -> str:
     """ok for a simple wall-line outline, warning for a hull fallback, blocked if undrawable."""
     if polygon.shape[0] < 4:
         return "blocked"
-    if method == "wall_lines":
+    if method in ("wall_lines", "wall_support_rect"):
         return "ok"
     if method in ("wall_inlier_hull", "floor_hull", "cloud_hull"):
         return "warning"
     return "blocked"
+
+
+def _supporting_rectangle(
+    floor: FittedPlane, walls: list[FittedPlane]
+) -> np.ndarray:
+    """Rectangle from two clusters of nearly-orthogonal wall ∩ floor lines."""
+    clustered: list[list[np.ndarray]] = []
+    for wall in walls:
+        line = _line_xz(wall, floor)
+        if line is None:
+            continue
+        v = line[:2].copy()
+        if v[0] < -1e-9 or (abs(float(v[0])) < 1e-9 and v[1] < 0.0):
+            line = -line
+            v = line[:2]
+        placed = False
+        for group in clustered:
+            ref = group[0][:2]
+            if abs(float(np.dot(v, ref))) >= 0.92:
+                if float(np.dot(v, ref)) < 0.0:
+                    line = -line
+                group.append(line)
+                placed = True
+                break
+        if not placed:
+            clustered.append([line])
+    clustered = [g for g in clustered if g]
+    clustered.sort(key=len, reverse=True)
+    if len(clustered) < 2:
+        return np.zeros((0, 2), dtype=np.float64)
+    a, b = clustered[0], clustered[1]
+    if abs(float(np.dot(a[0][:2], b[0][:2]))) > 0.40:
+        return np.zeros((0, 2), dtype=np.float64)
+
+    def _pair(group: list[np.ndarray]) -> tuple[np.ndarray, np.ndarray] | None:
+        ds = np.array([float(ln[2]) for ln in group], dtype=np.float64)
+        if float(np.max(ds) - np.min(ds)) < 1.0:
+            return None
+        i0 = int(np.argmin(ds))
+        i1 = int(np.argmax(ds))
+        return group[i0], group[i1]
+
+    pair_a = _pair(a)
+    pair_b = _pair(b)
+    if pair_a is None or pair_b is None:
+        return np.zeros((0, 2), dtype=np.float64)
+    l1, l2 = pair_a
+    l3, l4 = pair_b
+    corners: list[np.ndarray] = []
+    for u in (l1, l2):
+        for v in (l3, l4):
+            hit = _intersect_xz(u, v)
+            if hit is None:
+                return np.zeros((0, 2), dtype=np.float64)
+            corners.append(hit)
+    ring = np.stack(corners, axis=0)
+    c = ring.mean(axis=0)
+    order = np.argsort(np.arctan2(ring[:, 1] - c[1], ring[:, 0] - c[0]))
+    return _close_ring(ring[order])
 
 
 def polygon_from_walls(
@@ -467,9 +526,9 @@ def polygon_from_walls(
 ) -> tuple[np.ndarray, str, str]:
     """Pick a closed XZ outline. Returns polygon, method code, and a note.
 
-    Order: wall-line ring, then the wall-inlier hull, then the floor hull.
-    A candidate is kept only when it is simple and stays within
-    ``FOOTPRINT_MARGIN_M`` of the floor points.
+    Order: wall-line ring, then a two-axis supporting rectangle, then the
+    wall-inlier hull, then the floor hull. A candidate is kept only when it
+    is simple and stays within ``FOOTPRINT_MARGIN_M`` of the floor points.
     """
     hull = _convex_hull_xz(floor.points[:, [0, 2]])
     if not walls:
@@ -508,6 +567,13 @@ def polygon_from_walls(
         why = "wall lines outside floor margin"
     else:
         why = "line intersections degenerate"
+    support = _supporting_rectangle(floor, walls)
+    if support is not None and _within_floor_margin(support, hull):
+        return (
+            support,
+            "wall_support_rect",
+            f"polygon from two-axis wall supports ({why})",
+        )
     wall_pts = np.concatenate([w.points[:, [0, 2]] for w in walls], axis=0)
     wall_hull = _convex_hull_xz(wall_pts)
     if _within_floor_margin(wall_hull, hull):
@@ -579,33 +645,15 @@ def fit_planes(
     n_all = int(points.shape[0])
     xyz = downsample_points(points, voxel_m=voxel_m)
     n_ds = int(xyz.shape[0])
-    min_h = max(80, n_ds // 80)
     min_w = max(60, n_ds // 120)
-    rng = np.random.default_rng(PLANE_SEED)
 
-    # Floor: densest horizontal among the lower points (Y up).
-    y_cut = float(np.percentile(xyz[:, 1], 40.0))
-    low = xyz[xyz[:, 1] <= y_cut]
-    floor = None
-    got = _segment_one(
-        low if low.shape[0] >= 80 else xyz,
-        distance_m=distance_m,
-        n_iter=500,
-        rng=rng,
-        require="horizontal",
-    )
-    if got is None:
-        got = _segment_one(
-            xyz, distance_m=distance_m, n_iter=500, rng=rng, require="horizontal"
-        )
+    from src.floor import select_floor
+
+    floor, _rejected_floors, floor_notes = select_floor(xyz, distance_m=distance_m)
+    notes.extend(floor_notes)
     remaining = xyz
-    if got is not None and got[1].size >= min_h:
-        model, idx_low = got
-        # re-evaluate inliers on the full downsampled cloud
-        idx = np.flatnonzero(_residuals(xyz, model) < distance_m)
-        if idx.size >= 50:
-            floor = _to_fitted(model, xyz[idx], "floor")
-            remaining = xyz[_residuals(xyz, model) >= distance_m]
+    if floor is not None:
+        remaining = xyz[_residuals(xyz, floor.abc_d) >= distance_m]
 
     walls: list[FittedPlane] = []
     others: list[FittedPlane] = []

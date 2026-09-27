@@ -42,6 +42,7 @@ def test_json_has_height_and_residuals_on_synthetic_box(tmp_path: Path):
     assert len(payload["polygon_xz_m"]) >= 4
     assert payload["footprint_method"] in {
         "wall_lines",
+        "wall_support_rect",
         "wall_inlier_hull",
         "floor_hull",
     }

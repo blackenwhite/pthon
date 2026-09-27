@@ -99,6 +99,35 @@ def test_small_high_patch_is_not_a_ceiling():
     assert any(item.code == "sparse_coverage" for item in result.rejected_ceilings)
 
 
+def test_occupied_sheet_falls_back_to_column_height():
+    """A real ceiling with clutter above still yields height from empty mid-band columns."""
+    rng = np.random.default_rng(5)
+    n = 900
+    y = rng.uniform(0.0, 2.5, n)
+    z = rng.uniform(0.0, 5.0, n)
+    x = rng.uniform(0.0, 4.0, n)
+    walls = np.concatenate(
+        [
+            np.stack([np.zeros(n), y, z], axis=1),
+            np.stack([np.full(n, 4.0), y, z], axis=1),
+            np.stack([x, y, np.zeros(n)], axis=1),
+            np.stack([x, y, np.full(n, 5.0)], axis=1),
+        ],
+        axis=0,
+    ) + rng.normal(0.0, 0.008, size=(4 * n, 3))
+    floor = _sheet(rng, 0.0, 2500, 0.0, 4.0, 0.0, 5.0)
+    ceiling = _sheet(rng, 2.5, 1800, 0.0, 4.0, 0.0, 5.0)
+    clutter = _sheet(rng, 2.75, 1800, 0.0, 4.0, 0.0, 5.0)
+    result = fit_planes(
+        np.concatenate([floor, walls, ceiling, clutter], axis=0),
+        voxel_m=0.05,
+        distance_m=0.03,
+    )
+    assert result.height_m is not None
+    assert abs(result.height_m - 2.5) < 0.25
+    assert any("bimodal" in note or note.startswith("ceiling:") for note in result.notes)
+
+
 def test_ceiling_search_is_repeatable():
     rng = np.random.default_rng(3)
     pts = _room(rng, ceiling=True, table=True)
