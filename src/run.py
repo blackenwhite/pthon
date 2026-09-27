@@ -25,15 +25,53 @@ from src.cloud import (
 from src.export import lidar_source_files, write_plan_exports
 from src.ingest import inspect_text, load_capture
 from src.media import export_stills, export_video, stills_text, video_text
-from src.planes import fit_planes, planes_text, write_plan_preview
+from src.planes import PlaneResult, fit_planes, planes_text, write_plan_preview
 from src.posegraph import drift_text, refine_pose_graph, write_drift_preview
 from src.report import attach_versus, fix_loop, report_text, write_report
+from src.timing import PhaseTimer, attach_run, build_run, run_text
 
 
 def _cloud_out(capture: Path, explicit: Path | None) -> Path:
     if explicit is not None:
         return explicit
     return Path("out") / capture.resolve().name / "cloud.ply"
+
+
+def _stamp_run(
+    timer: PhaseTimer,
+    *,
+    capture: str,
+    tier: str,
+    frame_stride: int,
+    pixel_stride: int,
+    min_confidence: int,
+    invert_extrinsics: bool,
+    from_ply: bool,
+    result: PlaneResult,
+    outputs: list[Path],
+    json_paths: list[Path],
+) -> dict:
+    timer.stop()
+    run = build_run(
+        capture=capture,
+        tier=tier,
+        frame_stride=frame_stride,
+        pixel_stride=pixel_stride,
+        min_confidence=min_confidence,
+        invert_extrinsics=invert_extrinsics,
+        from_ply=from_ply,
+        n_points=result.n_points,
+        n_retained=result.n_downsampled,
+        n_walls=len(result.walls),
+        n_openings=len(result.openings),
+        phases_s=timer.phases_s,
+        outputs=outputs,
+    )
+    for path in json_paths:
+        if path.exists():
+            attach_run(path, run)
+    print(run_text(run))
+    return run
 
 
 def _ensure_cloud(
@@ -235,6 +273,9 @@ def main(argv: list[str] | None = None) -> int:
         wrote_cloud = True
     if want_planes or args.report:
         ply = _cloud_out(args.capture, out)
+        reused_ply = args.from_ply and not wrote_cloud
+        timer = PhaseTimer()
+        timer.start("cloud")
         points, _colors = _ensure_cloud(
             args.capture,
             out=ply,
@@ -244,49 +285,81 @@ def main(argv: list[str] | None = None) -> int:
             invert_extrinsics=args.invert_extrinsics,
             from_ply=args.from_ply or wrote_cloud,
         )
+        timer.stop()
+        timer.start("planes")
         fitted = fit_planes(points)
+        timer.stop()
         sources, origin = lidar_source_files(
-            args.capture, ply=ply, from_ply=args.from_ply and not wrote_cloud
+            args.capture, ply=ply, from_ply=reused_ply
         )
+        outputs: list[Path] = []
+        json_paths: list[Path] = []
+        other = None
+        if args.report and args.versus is not None:
+            other_ply = Path("out") / args.versus.resolve().name / "cloud.ply"
+            reuse_other = args.from_ply and other_ply.exists()
+            o_stride = max(args.frame_stride, 24)
+            o_pix = max(args.pixel_stride, 8)
+            other_timer = PhaseTimer()
+            other_timer.start("cloud")
+            o_pts, _o_cols = _ensure_cloud(
+                args.versus,
+                out=other_ply,
+                frame_stride=o_stride,
+                pixel_stride=o_pix,
+                min_confidence=args.min_confidence,
+                invert_extrinsics=args.invert_extrinsics,
+                from_ply=reuse_other,
+            )
+            other_timer.stop()
+            other_timer.start("planes")
+            other_fit = fit_planes(o_pts)
+            other_timer.stop()
+            other_timer.start("report")
+            other = fix_loop(other_fit, capture=str(args.versus))
+            other_sources, other_origin = lidar_source_files(
+                args.versus,
+                ply=other_ply,
+                from_ply=reuse_other,
+            )
+            other.source_files = other_sources
+            other.cloud_origin = other_origin
+            other_path = write_report(other, other_ply.parent)
+            print(report_text(other))
+            print(f"versus report JSON: {other_path.resolve()}")
+            _stamp_run(
+                other_timer,
+                capture=str(args.versus),
+                tier="lidar",
+                frame_stride=o_stride,
+                pixel_stride=o_pix,
+                min_confidence=args.min_confidence,
+                invert_extrinsics=args.invert_extrinsics,
+                from_ply=reuse_other,
+                result=other.result,
+                outputs=[other_path],
+                json_paths=[other_path],
+            )
         if args.report:
+            timer.start("report")
             report = fix_loop(fitted, capture=str(args.capture))
             report.source_files = sources
             report.cloud_origin = origin
             fitted = report.result
-            if args.versus is not None:
-                other_ply = Path("out") / args.versus.resolve().name / "cloud.ply"
-                reuse_other = args.from_ply and other_ply.exists()
-                o_stride = max(args.frame_stride, 24)
-                o_pix = max(args.pixel_stride, 8)
-                o_pts, _o_cols = _ensure_cloud(
-                    args.versus,
-                    out=other_ply,
-                    frame_stride=o_stride,
-                    pixel_stride=o_pix,
-                    min_confidence=args.min_confidence,
-                    invert_extrinsics=args.invert_extrinsics,
-                    from_ply=reuse_other,
-                )
-                other_fit = fit_planes(o_pts)
-                other = fix_loop(other_fit, capture=str(args.versus))
-                other_sources, other_origin = lidar_source_files(
-                    args.versus,
-                    ply=other_ply,
-                    from_ply=reuse_other,
-                )
-                other.source_files = other_sources
-                other.cloud_origin = other_origin
+            if other is not None:
                 attach_versus(report, other)
-                other_path = write_report(other, other_ply.parent)
-                print(report_text(other))
-                print(f"versus report JSON: {other_path.resolve()}")
             report_path = write_report(report, ply.parent)
+            timer.stop()
+            outputs.append(report_path)
+            json_paths.append(report_path)
             print(report_text(report))
             print(f"report JSON: {report_path.resolve()}")
         if want_planes:
             print(planes_text(fitted, label=str(args.capture)))
             plan_png = ply.parent / "preview_plan.png"
+            timer.start("export")
             write_plan_preview(points, fitted.polygon_xz, plan_png, openings=fitted.openings)
+            outputs.append(plan_png)
             print(f"plan PNG: {plan_png.resolve()}")
             if args.tier is not None:
                 jpath, spath = write_plan_exports(
@@ -297,13 +370,31 @@ def main(argv: list[str] | None = None) -> int:
                     source_files=sources,
                     cloud_origin=origin,
                 )
+                outputs.extend([jpath, spath])
+                json_paths.append(jpath)
                 print(f"plan JSON: {jpath.resolve()}")
                 print(f"plan SVG: {spath.resolve()}")
+            timer.stop()
+        _stamp_run(
+            timer,
+            capture=str(args.capture),
+            tier=args.tier or "lidar",
+            frame_stride=args.frame_stride,
+            pixel_stride=args.pixel_stride,
+            min_confidence=args.min_confidence,
+            invert_extrinsics=args.invert_extrinsics,
+            from_ply=reused_ply,
+            result=fitted,
+            outputs=outputs,
+            json_paths=json_paths,
+        )
         if args.ceiling is not None:
             ceil_ply = Path("out") / args.ceiling.resolve().name / "cloud.ply"
             # heavier subsample: this dump is ~9745 frames
             c_stride = max(args.frame_stride, 24)
             c_pix = max(args.pixel_stride, 8)
+            ceil_timer = PhaseTimer()
+            ceil_timer.start("cloud")
             c_pts, _c_cols = _ensure_cloud(
                 args.ceiling,
                 out=ceil_ply,
@@ -313,7 +404,10 @@ def main(argv: list[str] | None = None) -> int:
                 invert_extrinsics=args.invert_extrinsics,
                 from_ply=False,
             )
+            ceil_timer.stop()
+            ceil_timer.start("planes")
             c_fit = fit_planes(c_pts)
+            ceil_timer.stop()
             print(
                 planes_text(
                     c_fit,
@@ -321,6 +415,9 @@ def main(argv: list[str] | None = None) -> int:
                 )
             )
             c_png = ceil_ply.parent / "preview_plan.png"
+            c_outputs = [c_png]
+            c_json: list[Path] = []
+            ceil_timer.start("export")
             write_plan_preview(c_pts, c_fit.polygon_xz, c_png, openings=c_fit.openings)
             print(f"ceiling-scan plan PNG: {c_png.resolve()}")
             if args.tier is not None:
@@ -335,8 +432,23 @@ def main(argv: list[str] | None = None) -> int:
                     source_files=c_sources,
                     cloud_origin=c_origin,
                 )
+                c_outputs.extend([cj, cs])
+                c_json.append(cj)
                 print(f"ceiling-scan JSON: {cj.resolve()}")
                 print(f"ceiling-scan SVG: {cs.resolve()}")
+            _stamp_run(
+                ceil_timer,
+                capture=str(args.ceiling),
+                tier=args.tier or "lidar",
+                frame_stride=c_stride,
+                pixel_stride=c_pix,
+                min_confidence=args.min_confidence,
+                invert_extrinsics=args.invert_extrinsics,
+                from_ply=False,
+                result=c_fit,
+                outputs=c_outputs,
+                json_paths=c_json,
+            )
     if args.preview:
         ply = out or Path("out") / args.capture.resolve().name / "cloud.ply"
         if not ply.exists():

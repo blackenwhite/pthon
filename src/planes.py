@@ -14,6 +14,11 @@ from src.openings import Opening, detect_openings
 
 HORIZONTAL_DOT = 0.85  # |n · Y|
 VERTICAL_DOT = 0.30  # |n · Y| below this → wall
+# Voxel overflow subsample. The voxel grid itself is deterministic.
+DOWNSAMPLE_SEED = 0
+# Floor, wall, and ceiling numpy RANSAC. Open3D segment_plane is unseeded
+# and runs only when this sampler finds no horizontal plane.
+PLANE_SEED = 1
 
 
 @dataclass
@@ -83,7 +88,7 @@ def downsample_points(
     pcd = pcd.voxel_down_sample(max(float(voxel_m), 1e-4))
     xyz = np.asarray(pcd.points)
     if xyz.shape[0] > max_points:
-        rng = np.random.default_rng(0)
+        rng = np.random.default_rng(DOWNSAMPLE_SEED)
         pick = rng.choice(xyz.shape[0], size=max_points, replace=False)
         xyz = xyz[pick]
     return xyz.astype(np.float64)
@@ -197,7 +202,7 @@ def _segment_one(
     require: str | None = None,
 ) -> tuple[np.ndarray, np.ndarray] | None:
     if rng is None:
-        rng = np.random.default_rng(1)
+        rng = np.random.default_rng(PLANE_SEED)
     # Seeded sampler. Open3D's segment_plane has no seed, so a floor refit changed
     # which points were left for the walls and the wall count jumped between runs.
     if require in ("vertical", "horizontal"):
@@ -248,7 +253,7 @@ def extract_planes(
 ) -> list[tuple[np.ndarray, np.ndarray]]:
     remaining = xyz.copy()
     found: list[tuple[np.ndarray, np.ndarray]] = []
-    rng = np.random.default_rng(1)
+    rng = np.random.default_rng(PLANE_SEED)
     for _ in range(max_planes):
         got = _segment_one(
             remaining,
@@ -576,7 +581,7 @@ def fit_planes(
     n_ds = int(xyz.shape[0])
     min_h = max(80, n_ds // 80)
     min_w = max(60, n_ds // 120)
-    rng = np.random.default_rng(1)
+    rng = np.random.default_rng(PLANE_SEED)
 
     # Floor: densest horizontal among the lower points (Y up).
     y_cut = float(np.percentile(xyz[:, 1], 40.0))

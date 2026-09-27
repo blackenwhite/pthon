@@ -14,6 +14,7 @@ from src.export import (
 )
 from src.planes import fit_planes
 from src.run import main
+from src.timing import build_run, repeat_key
 from tests.test_planes import _box_cloud
 
 
@@ -87,6 +88,31 @@ def test_from_ply_lists_only_the_cloud(tmp_path: Path):
     assert origin == "rebuilt_this_run"
     assert all(not name.endswith("imu.csv") for name in rebuilt)
     assert rebuilt[0].endswith("camera_matrix.csv")
+
+
+def test_run_metadata_records_config_and_excludes_timing_from_repeat_key(tmp_path: Path):
+    output = tmp_path / "plan.json"
+    run = build_run(
+        capture="synthetic-box",
+        tier="lidar",
+        frame_stride=12,
+        pixel_stride=4,
+        min_confidence=1,
+        invert_extrinsics=False,
+        from_ply=True,
+        n_points=100,
+        n_retained=80,
+        n_walls=4,
+        n_openings=2,
+        phases_s={"planes": 1.25},
+        outputs=[output],
+    )
+    assert run["seeds"]["downsample"] == 0
+    assert run["seeds"]["planes"] == 1
+    assert run["outputs"] == [str(output.resolve())]
+    assert run["determinism_key"] == repeat_key(run)
+    assert repeat_key(run)["n_walls"] == 4
+    assert "phases_s" not in repeat_key(run)
 
 
 def test_svg_blocked_polygon(tmp_path: Path):

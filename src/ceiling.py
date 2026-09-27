@@ -11,6 +11,7 @@ from __future__ import annotations
 import numpy as np
 
 from src.planes import (
+    PLANE_SEED,
     FittedPlane,
     RejectedPlane,
     _residuals,
@@ -63,7 +64,7 @@ def select_ceiling(
             ],
         )
 
-    rng = np.random.default_rng(1)
+    rng = np.random.default_rng(PLANE_SEED)
     rejected: list[RejectedPlane] = []
     notes: list[str] = []
     for _ in range(MAX_CANDIDATES):

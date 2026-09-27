@@ -1,0 +1,69 @@
+=== planes: store/c7d28f72c6 ===
+points: 297183  downsampled: 250000
+floor: inliers=13090  rmse_m=0.0231  median_resid_m=0.0202  normal=(-0.001,1.000,-0.004)  mean_xyz_m=(1.628,-0.052,4.715)
+floor_y_m (mean inliers): -0.0525
+walls: 5  rejected: 5
+  wall0: inliers=3343  rmse_m=0.0231  median_resid_m=0.0202  normal=(0.843,-0.023,-0.538)  mean_xyz_m=(1.083,0.179,3.926)
+  wall1: inliers=4139  rmse_m=0.0234  median_resid_m=0.0203  normal=(-0.982,-0.008,-0.189)  mean_xyz_m=(-0.589,0.164,4.528)  confidence=low
+  wall2: inliers=3166  rmse_m=0.0232  median_resid_m=0.0203  normal=(0.757,-0.120,-0.642)  mean_xyz_m=(2.076,0.183,4.066)
+  wall3: inliers=3314  rmse_m=0.0231  median_resid_m=0.0201  normal=(0.795,-0.138,0.590)  mean_xyz_m=(1.366,0.233,5.469)  confidence=low
+  wall4: inliers=3136  rmse_m=0.0231  median_resid_m=0.0198  normal=(-0.152,-0.177,0.972)  mean_xyz_m=(2.071,0.156,4.499)  confidence=low
+  rejected near_parallel_duplicate: inliers=3603  offset_m=0.10 hdot=0.98 kept_inliers=4139 inliers=3603
+  rejected near_parallel_duplicate: inliers=3922  offset_m=0.27 hdot=1.00 kept_inliers=3343 inliers=3922
+  rejected near_parallel_duplicate: inliers=3789  offset_m=0.27 hdot=0.99 kept_inliers=4139 inliers=3789
+  rejected near_parallel_duplicate: inliers=3706  offset_m=0.29 hdot=1.00 kept_inliers=3166 inliers=3706
+  rejected near_parallel_duplicate: inliers=4248  offset_m=0.07 hdot=1.00 kept_inliers=3166 inliers=4248
+ceiling: BLOCKED (no ceiling plane on this capture)
+  rejected ceiling too_low: inliers=2005  height 1.57 m, inliers 2005, span 7.16 x 6.83 m, fill 0.67, on_plane 1259 above 3342 (ratio 0.38) below 7950 (ratio 0.16)
+  rejected ceiling occupied_above: inliers=1496  height 1.78 m, inliers 1496, span 6.84 x 7.29 m, fill 0.56, on_plane 881 above 2575 (ratio 0.34) below 5617 (ratio 0.16)
+  rejected ceiling too_low: inliers=2206  height 1.48 m, inliers 2206, span 6.96 x 7.16 m, fill 0.71, on_plane 1383 above 3771 (ratio 0.37) below 8857 (ratio 0.16)
+  rejected ceiling occupied_above: inliers=1233  height 1.92 m, inliers 1233, span 6.91 x 6.65 m, fill 0.62, on_plane 730 above 2083 (ratio 0.35) below 4535 (ratio 0.16)
+  rejected ceiling occupied_above: inliers=1539  height 1.70 m, inliers 1539, span 6.87 x 6.47 m, fill 0.64, on_plane 994 above 2792 (ratio 0.36) below 6094 (ratio 0.16)
+  rejected ceiling occupied_above: inliers=1012  height 2.07 m, inliers 1012, span 7.33 x 6.80 m, fill 0.49, on_plane 654 above 1773 (ratio 0.37) below 3873 (ratio 0.17)
+height_m: BLOCKED
+height_p95_minus_p05_m (percentile check, not a plane): 2.8591
+floor_span_xz_m: 11.62 x 15.12
+polygon_span_xz_m: 11.62 x 15.12
+polygon_xz vertices (closed): 17
+  -4.255 2.391
+  -4.231 2.218
+  -0.570 -2.697
+  -0.008 -2.939
+  0.418 -3.029
+  4.407 -0.801
+  4.864 -0.530
+  5.369 0.013
+  7.158 4.379
+  7.360 5.703
+  7.205 6.280
+  7.046 6.729
+  5.428 8.989
+  -0.308 12.066
+  -0.432 12.086
+  -3.576 10.258
+  -4.132 5.361
+footprint_method: floor_hull
+output_quality: warning
+openings: 2
+  window wall2 width_m=0.880 height_m=1.202 xz=(2.60,4.69)-(3.12,5.30)
+  window wall1 width_m=0.800 height_m=1.048 xz=(-0.81,5.67)-(-0.67,4.96)
+note: rejected wall: near_parallel_duplicate offset_m=0.10 hdot=0.98 kept_inliers=4139 inliers=3603
+note: rejected wall: near_parallel_duplicate offset_m=0.27 hdot=1.00 kept_inliers=3343 inliers=3922
+note: rejected wall: near_parallel_duplicate offset_m=0.27 hdot=0.99 kept_inliers=4139 inliers=3789
+note: rejected wall: near_parallel_duplicate offset_m=0.29 hdot=1.00 kept_inliers=3166 inliers=3706
+note: rejected wall: near_parallel_duplicate offset_m=0.07 hdot=1.00 kept_inliers=3166 inliers=4248
+note: wall filter: kept 5 (low=3), rejected 5
+note: rejected ceiling: too_low height 1.57 m, inliers 2005, span 7.16 x 6.83 m, fill 0.67, on_plane 1259 above 3342 (ratio 0.38) below 7950 (ratio 0.16)
+note: rejected ceiling: occupied_above height 1.78 m, inliers 1496, span 6.84 x 7.29 m, fill 0.56, on_plane 881 above 2575 (ratio 0.34) below 5617 (ratio 0.16)
+note: rejected ceiling: too_low height 1.48 m, inliers 2206, span 6.96 x 7.16 m, fill 0.71, on_plane 1383 above 3771 (ratio 0.37) below 8857 (ratio 0.16)
+note: rejected ceiling: occupied_above height 1.92 m, inliers 1233, span 6.91 x 6.65 m, fill 0.62, on_plane 730 above 2083 (ratio 0.35) below 4535 (ratio 0.16)
+note: rejected ceiling: occupied_above height 1.70 m, inliers 1539, span 6.87 x 6.47 m, fill 0.64, on_plane 994 above 2792 (ratio 0.36) below 6094 (ratio 0.16)
+note: rejected ceiling: occupied_above height 2.07 m, inliers 1012, span 7.33 x 6.80 m, fill 0.49, on_plane 654 above 1773 (ratio 0.37) below 3873 (ratio 0.17)
+note: ceiling blocked: no upper horizontal plane with empty space above it; height left null
+note: polygon from floor convex hull (wall lines self-intersect; wall hull outside floor margin)
+note: openings heuristic: 2 gap(s); width from occupancy bins, not a door detector
+residuals are fit error, not tape-measure accuracy
+plan PNG: /Users/nabajyotimajumdar/F/Pthon/out/c7d28f72c6/preview_plan.png
+plan JSON: /Users/nabajyotimajumdar/F/Pthon/out/c7d28f72c6/plan.json
+plan SVG: /Users/nabajyotimajumdar/F/Pthon/out/c7d28f72c6/plan.svg
+run: capture=store/c7d28f72c6 tier=lidar stride=24/8 from_ply=True points=297183 retained=250000 walls=5 openings=2 seeds=downsample:0,planes:1 cloud=0.009s planes=4.935s export=0.241s

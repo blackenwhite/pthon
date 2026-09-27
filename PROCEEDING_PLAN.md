@@ -348,6 +348,8 @@ step 7: stabilise bounded room footprint export
 
 ### Step 8 — Measure runtime and determinism
 
+**Status:** Done. Implemented in `src/timing.py` and `src/run.py`, not committed (Nabajyoti commits). LiDAR `plan.json` and `report.json` carry a `run` object: capture, tier, strides, point/wall/opening counts, phase timings, output paths, sampler seeds (`downsample=0`, `planes=1`), and `determinism_key` (timings and paths excluded). Open3D is labelled `unseeded_fallback`. A second `--from-ply` export of each frozen cloud repeats walls 4 and 5, openings 2, and retained 192,770 / 250,000. Times move: `c00a170fe1` planes 3.586–5.385 s; `c7d28f72c6` planes 4.935–5.056 s. Logs in `step8/logs/`. The README “Runtime and determinism” section has the command and table.
+
 **Objective:** Make the baseline and fix runs comparable.
 
 **Why:** Reproducibility is part of the assignment and gives the fix-loop quantitative evidence.

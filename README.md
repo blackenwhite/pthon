@@ -297,6 +297,38 @@ Room ids are stable: `c00a170fe1` → `room_01` (single room), `c7d28f72c6` → 
 
 This step does not reconstruct from photo or video. Metric plans still come from the LiDAR/RGB-D path. Adapters for all three tiers are in `src/adapters.py`.
 
+## Runtime and determinism
+
+Step 8 records run metadata on every JSON plan or reconstruction report
+written by the LiDAR path. The `run` object includes the capture and tier,
+frame and pixel strides, confidence threshold, point counts, wall/opening
+counts, phase timings, output paths, and the seeds used by the deterministic
+numpy samplers. `open3d_segment_plane` is explicitly labelled
+`unseeded_fallback`; it is only used when the seeded horizontal sampler cannot
+find a plane. Each run also contains a `determinism_key`, which excludes
+timings and output paths for direct repeat comparison.
+
+Repeat a plan export from an existing cloud:
+
+```bash
+python -m src store/c00a170fe1 --tier lidar --from-ply
+python -m src store/c00a170fe1 --tier lidar --from-ply
+```
+
+Compare the two `run.determinism_key` objects directly. The configuration and
+geometry counts should match; timings are machine-dependent and are recorded
+for comparison rather than treated as a quality metric.
+
+The reproducibility run is preserved in `step8/logs/`:
+
+| Capture | Tier | Input | Points | Retained | Walls | Openings | Phases |
+|---|---|---|---:|---:|---:|---:|---|
+| `c00a170fe1` | LiDAR | existing PLY | 428,817 | 192,770 | 4 | 2 | `planes=3.586–5.385s`, `export=0.084–0.408s` |
+| `c7d28f72c6` | LiDAR | existing PLY | 297,183 | 250,000 | 5 | 2 | `planes=4.935–5.056s`, `export=0.201–0.241s` |
+
+Exact timing values vary by machine. The JSON metadata is the source of truth
+for each run.
+
 ## Tests
 
 ```bash
