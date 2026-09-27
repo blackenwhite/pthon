@@ -1,5 +1,60 @@
 # Cozmo room plan MVP
 
+## Required benchmark data
+
+The repository intentionally does not commit the supplied raw capture data
+because it is approximately 2.3 GB. To run the RGB-D baseline and reproduce
+the reported measurements, obtain the benchmark-data bundle from the submission
+email and extract it at the repository root so that this path exists:
+
+```text
+store/
+  c00a170fe1/
+    camera_matrix.csv
+    odometry.csv
+    imu.csv
+    rgb.mp4
+    depth/*.png
+    confidence/*.png
+  c7d28f72c6/
+    camera_matrix.csv
+    odometry.csv
+    imu.csv
+    rgb.mp4
+    depth/*.png
+    confidence/*.png
+  1a8384c3f6/
+    camera_matrix.csv
+    odometry.csv
+    imu.csv
+    rgb.mp4
+    depth/*.png
+    confidence/*.png
+```
+
+The `store/` directory is ignored by Git deliberately. It is not missing from
+the implementation: it is delivered separately as the benchmark-data bundle.
+The captures are supplied Record3D data; no private room capture or iPhone
+15+ was used.
+
+After extracting the data, verify the setup with:
+
+```bash
+python -m src store/c00a170fe1 --inspect
+python -m pytest -q
+```
+
+To regenerate the logical photo, video, and LiDAR benchmark inputs from the
+raw captures:
+
+```bash
+python -m src.benchmark
+```
+
+The submission email should provide the benchmark-data link alongside this
+repository. If the repository is read without that email, the required data
+bundle is the only missing external dependency.
+
 This project turns an iPhone room scan into a simple floor-plan estimate.
 
 Think of it like this: the phone records the room, and this program tries to find the floor, walls, doors, and windows. It then draws a plan and saves the measurements it could estimate.
