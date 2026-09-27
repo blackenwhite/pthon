@@ -1,4 +1,63 @@
-# Cozmo room plan MVP
+# Engineering notes
+
+This is a local room-measurement prototype using Record3D LiDAR/RGB-D
+captures. It estimates floors, walls, openings, footprints, and sometimes
+height.
+
+Photo and video inputs currently produce only visual previews; they do not
+produce measurements.
+
+## Current status
+
+- LiDAR floor and wall detection: working, but not checked against a laser.
+- Openings: estimated from empty space in wall points.
+- Height: improved in commit `8e2183d3`.
+- Photo/video measurements: blocked.
+- Multi-room stitching: not implemented.
+- Physical damage detection: not implemented.
+
+The latest height change avoids mistaking a dense wall slice for the floor.
+The look-up capture now estimates **2.42 m** from interior point patterns.
+This is low-confidence and not laser-validated. A floor-focused capture
+correctly leaves height empty.
+
+## Run it
+
+```bash
+python3 -m venv .venv
+source .venv/bin/activate
+pip install -r requirements.txt
+python -m src path/to/record3d_folder --tier lidar
+```
+
+LiDAR writes `plan.json` and `plan.svg` under `out/`. Photo and video write
+keyframes and a blocked plan.
+
+## Important limits
+
+The output is an estimate from captured points, not a tape or laser survey.
+The system must not invent a height when the capture does not contain enough
+evidence. Photo and video do not use depth, poses, or hidden LiDAR files.
+
+## Documents
+
+- [COMPLIANCE_MATRIX.md](COMPLIANCE_MATRIX.md) — requirement coverage
+- [CAPTURE_PROTOCOL.md](CAPTURE_PROTOCOL.md) — capture instructions
+- [TECHNICAL_REPORT.md](TECHNICAL_REPORT.md) — short technical report
+- [BASELINE_REPORT.md](BASELINE_REPORT.md) — original measurements
+- [FIX_LOOP_REPORT.md](FIX_LOOP_REPORT.md) — wall-filter experiment
+- [PROCEEDING_PLAN.md](PROCEEDING_PLAN.md) — scope and next steps
+
+## Testing
+
+```bash
+python -m pytest -q
+```
+
+The height session reported 84 passing tests. Independent tape or laser
+measurements are still needed before calling the results accurate.
+
+<!-- Historical implementation notes retained below for reference.
 
 **What this is:** a local Record3D LiDAR/RGB-D room-plan baseline with honest photo/video adapters. It is not a stitched property scanner, a damage inspector, or a calibrated photo-metric product.
 
@@ -377,3 +436,4 @@ python -m pytest -q
 ```
 
 Fast tests use a tiny synthetic capture. Tests marked with the founder dump skip if `store/c00a170fe1` is missing.
+-->
