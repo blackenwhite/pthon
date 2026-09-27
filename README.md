@@ -329,6 +329,17 @@ The reproducibility run is preserved in `step8/logs/`:
 Exact timing values vary by machine. The JSON metadata is the source of truth
 for each run.
 
+## Step 9 fix-loop report
+
+The reproducible wall-filtering experiment is documented in
+[FIX_LOOP_REPORT.md](FIX_LOOP_REPORT.md). The frozen baseline returned 7 then 6
+walls for `c00a170fe1`; the post-fix pipeline repeats at 4 walls and records
+six rejected candidates with reason codes. `c7d28f72c6` repeats at 5 walls
+with five duplicate-plane rejections. Both captures still correctly report
+blocked ceiling height. The report separates these wall-filter results from
+the later ceiling and footprint changes and links the reproduction commands,
+logs, outputs, and remaining limitations.
+
 ## Tests
 
 ```bash
