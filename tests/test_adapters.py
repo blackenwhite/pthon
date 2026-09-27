@@ -99,6 +99,8 @@ def test_blocked_plan_has_no_invented_geometry(tmp_path: Path):
     assert payload["status"] == "blocked"
     assert payload["input_tier"] == "photo"
     assert payload["measurement_status"] == "not_implemented"
+    assert payload["method"] == "rgb_keyframes_non_metric"
+    assert payload["confidence_status"] == "low"
     assert payload["height_m"] is None
     assert payload["walls"] == []
     assert payload["polygon_xz_m"] == []
@@ -119,6 +121,9 @@ def test_cli_photo_and_video_tiers(tmp_path: Path, mini_capture: Path):
     assert data["tier"] == "photo"
     assert data["status"] == "blocked"
     assert data["source_files"] == [str((photos / "000000.png").resolve())]
+    assert data["visual_preview"] == "keyframes_preview.png"
+    assert (photo_out / "keyframes_preview.png").exists()
+    assert len(data["keyframes"]) == 1
 
     video_out = tmp_path / "video_out"
     rc = main(
@@ -130,6 +135,9 @@ def test_cli_photo_and_video_tiers(tmp_path: Path, mini_capture: Path):
     assert video["status"] == "blocked"
     assert video["source_files"] == [str((mini_capture / "rgb.mp4").resolve())]
     assert video["n_video_frames"] == 2
+    assert video["visual_preview"] == "keyframes_preview.png"
+    assert (video_out / "keyframes_preview.png").exists()
+    assert len(video["keyframes"]) == 2
 
 
 def test_cli_photo_cannot_use_from_ply(tmp_path: Path):

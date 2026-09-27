@@ -49,15 +49,18 @@ PHOTO_ALLOWED = ("still_images",)
 VIDEO_ALLOWED = ("rgb_video",)
 LIDAR_ALLOWED = ("depth", "confidence", "camera_matrix", "odometry", "rgb_video")
 
+RGB_METHOD = "rgb_keyframes_non_metric"
 PHOTO_NOTE = (
     "Photo-tier metric reconstruction is not implemented. This adapter consumed "
     "only still images. Depth, poses, and intrinsics were not read. Derived "
-    "PNGs from rgb.mp4 are not independent native photographs."
+    "PNGs from rgb.mp4 are not independent native photographs. Keyframes and "
+    "the contact sheet are non-metric visual evidence only."
 )
 VIDEO_NOTE = (
     "Video-tier metric reconstruction is not implemented. This adapter consumed "
     "only RGB video. Depth, poses, and intrinsics were not read. A copied "
-    "rgb.mp4 is not a separate native recording."
+    "rgb.mp4 is not a separate native recording. Keyframes and the contact "
+    "sheet are non-metric visual evidence only."
 )
 
 
@@ -194,7 +197,7 @@ def open_photo(path: Path) -> AdaptedInput:
         consumed=consumed,
         refused=refused,
         metric_reconstruction="blocked",
-        method="none",
+        method=RGB_METHOD,
         measurement_status="not_implemented",
         notes=notes,
         n_stills=len(stills),
@@ -238,7 +241,7 @@ def open_video(path: Path) -> AdaptedInput:
         consumed=[str(video.resolve())],
         refused=refused,
         metric_reconstruction="blocked",
-        method="none",
+        method=RGB_METHOD,
         measurement_status="not_implemented",
         notes=notes,
         n_video_frames=n_frames,
@@ -285,7 +288,7 @@ def open_input(path: Path, tier: str) -> AdaptedInput:
 
 def blocked_plan_payload(adapted: AdaptedInput) -> dict:
     disclaimer = " ".join(adapted.notes) if adapted.notes else DISCLAIMER
-    return {
+    payload = {
         "schema": SCHEMA,
         "status": "blocked",
         "tier": adapted.tier,
@@ -315,7 +318,18 @@ def blocked_plan_payload(adapted: AdaptedInput) -> dict:
         "notes": list(adapted.notes),
         "n_stills": adapted.n_stills,
         "n_video_frames": adapted.n_video_frames,
+        "keyframes": [],
+        "visual_preview": None,
+        "confidence_status": None,
+        "uncertainty": None,
     }
+    if adapted.tier in ("photo", "video"):
+        payload["confidence_status"] = "low"
+        payload["uncertainty"] = (
+            "No metric scale, poses, or depth were used. Geometry fields stay "
+            "empty. Keyframes and the contact sheet are visual evidence only."
+        )
+    return payload
 
 
 def write_blocked_plan(adapted: AdaptedInput, out_dir: Path) -> tuple[Path, Path]:

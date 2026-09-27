@@ -168,7 +168,7 @@ Repeating a plan export on the same PLY now keeps the same wall count. The floor
 
 ## Input adapters
 
-`--tier` now names an adapter with hard file boundaries. The LiDAR path is unchanged. Photo and video do not invent a metric plan.
+`--tier` names an adapter with hard file boundaries. The LiDAR path is unchanged. Photo and video select non-metric keyframes and a contact-sheet preview; they do not invent metres.
 
 ```bash
 python -m src store/c00a170fe1 --tier lidar --from-ply
@@ -177,15 +177,23 @@ python -m src benchmark/video/room_01.mp4 --tier video
 python -m src benchmark/photo/room_01 --inspect
 ```
 
-| Tier | Allowed inputs | Forbidden (present files are listed as `refused`, not opened) | Metric reconstruction |
-|---|---|---|---|
-| `lidar` | `depth/`, `confidence/`, `camera_matrix.csv`, `odometry.csv`, `rgb.mp4` | `imu.csv` is required to recognise the folder and is not used for fitting | Available (`ransac_rgb_d_planes`, still uncalibrated) |
-| `video` | One RGB video (`rgb.mp4` or a `.mp4` path) | `depth/`, `confidence/`, `odometry.csv`, `camera_matrix.csv`, `imu.csv` | Blocked (`status=blocked`, `measurement_status=not_implemented`) |
-| `photo` | Top-level stills (`.png` / `.jpg`) | `depth/`, `confidence/`, `odometry.csv`, `camera_matrix.csv`, `imu.csv`, `rgb.mp4`. Depth PNGs inside `depth/` are not stills. | Blocked, same JSON contract as video |
+### Final device / tier matrix
 
-`--inspect` without `--tier` classifies the path (Record3D folder, photo directory, or video file). `--tier photo` or `--tier video` writes `plan.json` / `plan.svg` under `out/<tier>_<name>/` with empty geometry. Combining those tiers with `--cloud`, `--planes`, `--from-ply`, `--drift`, or `--report` is rejected so a PLY cannot smuggle LiDAR into an RGB run.
+| Tier | Allowed inputs | Forbidden (listed as `refused`, not opened) | Metric reconstruction | RGB-tier outputs |
+|---|---|---|---|---|
+| `lidar` | `depth/`, `confidence/`, `camera_matrix.csv`, `odometry.csv`, `rgb.mp4` | `imu.csv` is required to recognise the folder and is not used for fitting | Available (`ransac_rgb_d_planes`, still uncalibrated) | Plan JSON/SVG/PNG from RGB-D planes |
+| `video` | One RGB video (`rgb.mp4` or a `.mp4` path) | `depth/`, `confidence/`, `odometry.csv`, `camera_matrix.csv`, `imu.csv` | Blocked (`status=blocked`, `measurement_status=not_implemented`, `confidence_status=low`) | Up to 12 evenly spaced keyframes, `keyframes_preview.png`, empty geometry plan |
+| `photo` | Top-level stills (`.png` / `.jpg`) | `depth/`, `confidence/`, `odometry.csv`, `camera_matrix.csv`, `imu.csv`, `rgb.mp4`. Depth PNGs inside `depth/` are not stills. | Blocked, same honesty contract as video | Same keyframe + contact-sheet contract over sorted stills |
 
-Derived stills under `benchmark/` remain decoded `rgb.mp4` frames, not native photographs.
+`--inspect` without `--tier` classifies the path (Record3D folder, photo directory, or video file). `--tier photo` or `--tier video` writes under `out/<tier>_<name>/`:
+
+- `keyframes/*.png` — selected frames (stills copied or RGB-only video decode)
+- `keyframes_preview.png` — shared non-metric contact sheet
+- `plan.json` / `plan.svg` — `method=rgb_keyframes_non_metric`, empty walls/polygon/`height_m`, plus `keyframes`, `visual_preview`, `confidence_status=low`, and an `uncertainty` note
+
+Keyframe rule: at most 12 evenly spaced indices. For video, an explicit `--frame-stride` thins frames first, then the 12-cap applies; without that flag the default LiDAR stride is ignored so spacing stays even. Combining photo/video with `--cloud`, `--planes`, `--from-ply`, `--drift`, or `--report` is rejected so a PLY cannot smuggle LiDAR into an RGB run.
+
+Derived stills under `benchmark/` remain decoded `rgb.mp4` frames, not native photographs. On the prepared rooms: `benchmark/photo/room_01` → 12 keyframes / 12 stills; `benchmark/video/room_01.mp4` → 12 keyframes from a claimed 1715-frame clip (last readable index 1713 after OpenCV frame-count overestimate). Example artifacts: `out/photo_room_01/keyframes_preview.png`, `out/video_room_01/keyframes_preview.png`.
 
 ## Wall filtering
 

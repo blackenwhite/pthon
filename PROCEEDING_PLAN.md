@@ -405,6 +405,8 @@ step 9: add reproducible geometry fix-loop report
 
 ### Step 10 — Add RGB-only photo/video behaviour only if time remains
 
+**Status:** Done. Implemented in `src/rgb_tier.py` (wired from `src/run.py` / `src/adapters.py`), not committed (Nabajyoti commits). Photo and video keep hard file boundaries and empty metric geometry. Each RGB run selects up to 12 evenly spaced keyframes, writes `keyframes/` plus `keyframes_preview.png`, and enriches the blocked plan with `method=rgb_keyframes_non_metric`, `confidence_status=low`, `uncertainty`, `keyframes`, and `visual_preview`. Video never reads odometry or intrinsics; photo never reads depth. On `benchmark/photo/room_01`: 12 stills → 12 keyframes. On `benchmark/video/room_01.mp4`: 12 keyframes (claimed 1715 frames; last readable index 1713). `--from-ply` / `--planes` still rejected on RGB tiers. `python -m pytest -q`: 80+ passed including `tests/test_rgb_tier.py`. The README “Final device / tier matrix” documents the outputs and derived-RGB disclosure.
+
 **Objective:** Provide a truthful extension for the other logical tiers.
 
 **Why:** The assignment requires three tiers, but a credible RGB-only metric solution is significantly harder than the current LiDAR baseline.

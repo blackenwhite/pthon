@@ -13,8 +13,8 @@ from src.adapters import (
     adapter_out_dir,
     identify_tier,
     open_input,
-    write_blocked_plan,
 )
+from src.rgb_tier import write_rgb_tier_outputs
 from src.cloud import (
     build_cloud,
     cloud_text,
@@ -128,7 +128,8 @@ def main(argv: list[str] | None = None) -> int:
         default=None,
         help=(
             "Input adapter: lidar may use depth/poses; video may use RGB video "
-            "only; photo may use stills only. Photo/video metric plans are blocked."
+            "only; photo may use stills only. Photo/video write non-metric "
+            "keyframes and a blocked plan (no metres)."
         ),
     )
     parser.add_argument(
@@ -207,7 +208,8 @@ def main(argv: list[str] | None = None) -> int:
     ):
         parser.error(
             f"--tier {args.tier} cannot use depth, poses, a PLY, or the LiDAR "
-            "cloud/planes/report path; it only writes a blocked RGB plan"
+            "cloud/planes/report path; it only writes non-metric RGB keyframes "
+            "and a blocked plan"
         )
     if (
         not args.inspect
@@ -245,9 +247,34 @@ def main(argv: list[str] | None = None) -> int:
         adapted = _open_tier(explicit_tier)
         print(adapted.inspect_text())
         out_dir = adapter_out_dir(args.capture, adapted.tier, args.out)
-        jpath, spath = write_blocked_plan(adapted, out_dir)
-        print(f"plan JSON: {jpath.resolve()} (metric reconstruction blocked)")
-        print(f"plan SVG: {spath.resolve()}")
+        # Default --frame-stride=12 is for LiDAR. For video keyframes, only use
+        # it when the user passed the flag explicitly; otherwise even spacing.
+        argv_list = argv if argv is not None else None
+        if argv_list is None:
+            import sys
+
+            argv_list = sys.argv[1:]
+        stride_explicit = any(
+            a == "--frame-stride" or a.startswith("--frame-stride=")
+            for a in argv_list
+        )
+        video_stride = args.frame_stride if stride_explicit else None
+        paths = write_rgb_tier_outputs(
+            adapted,
+            out_dir,
+            frame_stride=video_stride if adapted.tier == "video" else None,
+        )
+        n_kf = len(list((paths["keyframes_dir"]).glob("*.png")))
+        print(
+            f"keyframes: {n_kf} under {paths['keyframes_dir'].resolve()} "
+            "(non-metric)"
+        )
+        print(f"preview: {paths['preview'].resolve()}")
+        print(
+            f"plan JSON: {paths['plan_json'].resolve()} "
+            "(metric reconstruction blocked)"
+        )
+        print(f"plan SVG: {paths['plan_svg'].resolve()}")
         return 0
 
     out = args.out
