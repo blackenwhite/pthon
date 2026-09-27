@@ -102,6 +102,8 @@ def test_blocked_plan_has_no_invented_geometry(tmp_path: Path):
     assert payload["height_m"] is None
     assert payload["walls"] == []
     assert payload["polygon_xz_m"] == []
+    assert payload["output_quality"] == "blocked"
+    assert payload["footprint_method"] == ""
     assert payload["source_files"] == adapted.consumed
     assert "BLOCKED" in spath.read_text()
 

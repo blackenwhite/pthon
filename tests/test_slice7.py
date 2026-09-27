@@ -65,7 +65,8 @@ def test_near_parallel_wall_does_not_explode_outline():
     floor = _floor()
     # Meets the x=0 wall about 80 m away, and still crosses the room.
     rogue = _wall([26.0, 0.0, 1.0, -80.0], _edge_pts("x", 3.0, n=40))
-    poly, _how = polygon_from_walls(floor, [*_room_walls(), rogue])
+    poly, method, _how = polygon_from_walls(floor, [*_room_walls(), rogue])
+    assert method in {"wall_lines", "wall_inlier_hull", "floor_hull"}
     span_x = float(poly[:, 0].max() - poly[:, 0].min())
     span_z = float(poly[:, 1].max() - poly[:, 1].min())
     assert span_x < 12.0
@@ -107,7 +108,7 @@ def test_duplicate_walls_are_merged():
 
 def test_height_blocked_is_info_and_not_invented():
     floor = _floor()
-    poly, _how = polygon_from_walls(floor, _room_walls())
+    poly, _method, _how = polygon_from_walls(floor, _room_walls())
     raw = _result(floor=floor, walls=_room_walls(), polygon=poly, height=None)
     findings = assess(raw)
     blocked = [f for f in findings if f.code == "height_blocked"]

@@ -126,6 +126,8 @@ def plan_to_dict(
             else None
         ),
         "polygon_xz_m": _polygon_vertices(result.polygon_xz),
+        "footprint_method": result.footprint_method,
+        "output_quality": result.output_quality,
         "openings": [_opening_dict(op) for op in result.openings],
         "notes": list(result.notes),
     }
@@ -232,6 +234,8 @@ def write_plan_svg(payload: dict, out_path: Path, *, px_per_m: float = 40.0) -> 
     title = escape(
         f"{cap}  status={payload.get('status', STATUS)}  "
         f"tier={payload.get('input_tier', payload.get('tier'))}  "
+        f"quality={payload.get('output_quality', '')}  "
+        f"footprint={payload.get('footprint_method') or 'none'}  "
         f"accuracy={payload.get('accuracy_status', ACCURACY_STATUS)}  "
         f"height={height_txt}"
     )

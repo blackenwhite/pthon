@@ -19,6 +19,7 @@ from src.planes import (
     PlaneResult,
     _convex_hull_xz,
     _dedupe_walls,
+    footprint_quality,
     polygon_from_walls,
     wall_alignment,
 )
@@ -198,30 +199,37 @@ def repair(result: PlaneResult) -> tuple[PlaneResult, list[str]]:
         walls = merged
 
     polygon = result.polygon_xz
+    footprint_method = result.footprint_method
+    output_quality = result.output_quality
     if result.floor is not None and polygon_exploded(result):
-        rebuilt, how = polygon_from_walls(result.floor, walls)
-        candidate = PlaneResult(
-            floor=result.floor,
-            ceiling=result.ceiling,
+        rebuilt, method, how = polygon_from_walls(result.floor, walls)
+        candidate = replace(
+            result,
             walls=walls,
-            others=result.others,
             polygon_xz=rebuilt,
-            height_m=result.height_m,
-            height_p05_p95_m=result.height_p05_p95_m,
-            n_points=result.n_points,
-            n_downsampled=result.n_downsampled,
-            openings=result.openings,
             notes=notes,
+            footprint_method=method,
+            output_quality=footprint_quality(method, rebuilt),
         )
         if polygon_exploded(candidate):
             hull = _convex_hull_xz(result.floor.points[:, [0, 2]])
             rebuilt = hull
+            method = "floor_hull"
             how = "floor convex hull"
         polygon = rebuilt
+        footprint_method = method
+        output_quality = footprint_quality(method, polygon)
         fixes.append(f"replaced exploded outline with {how}")
         notes.append(f"fix: replaced exploded outline with {how}")
 
-    updated = replace(result, walls=walls, polygon_xz=polygon, notes=notes)
+    updated = replace(
+        result,
+        walls=walls,
+        polygon_xz=polygon,
+        notes=notes,
+        footprint_method=footprint_method,
+        output_quality=output_quality,
+    )
     return updated, fixes
 
 
@@ -240,6 +248,8 @@ def _snapshot(result: PlaneResult, findings: list[Finding]) -> dict:
         "floor_span_xz_m": _round_span(floor_span(result)),
         "polygon_span_xz_m": _round_span(_xz_span(result.polygon_xz)),
         "polygon_xz_m": _polygon_vertices(result.polygon_xz),
+        "footprint_method": result.footprint_method,
+        "output_quality": result.output_quality,
         "findings": [f.to_dict() for f in findings],
     }
 

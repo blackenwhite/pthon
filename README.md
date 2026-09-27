@@ -245,7 +245,37 @@ On the frozen clouds the search still blocks height. The best planes that clear 
 | `c7d28f72c6` `height_m` | BLOCKED (leftover plane 0.67 m) | BLOCKED. 6 rejected: 2 `too_low`, 4 `occupied_above`. Highest plane 2.07 m, above-ratio 0.37 |
 | Walls | 4 and 5 | 4 and 5, same low-confidence counts |
 
-The look-up capture does not contain a sheet with empty space above it. The points above 1.6 m keep going; they are not a ceiling plane. The polygon and the fit residuals are unchanged. The next step is a bounded footprint.
+The look-up capture does not contain a sheet with empty space above it. The points above 1.6 m keep going; they are not a ceiling plane. The polygon and the fit residuals were unchanged by this search. Footprint bounds are the next section.
+
+## Footprint
+
+Wall-line corners were allowed to form an outline up to four times the floor box, and a vertex only had to land inside a wide margin. On `c7d28f72c6` that kept the wall-inlier hull, whose Z span (15.62 m) stuck out past the floor points (15.12 m). Sorting those corners around their centre also hid a crossed loop by reordering it into a simple shape.
+
+`polygon_from_walls` now tries three outlines, in order, and keeps the first that passes:
+
+1. `wall_lines` — corners where neighbouring wall lines meet the floor, in wall-angle order. `output_quality` is `ok`.
+2. `wall_inlier_hull` — convex hull of the wall inliers. `output_quality` is `warning`.
+3. `floor_hull` — convex hull of the floor inliers. This is the bounded fallback. `output_quality` is `warning`.
+
+A candidate is kept only when it has at least three corners, its edges do not cross, its box covers at least a quarter of the floor box, and every corner sits within 0.5 m of the floor points’ X and Z range (`FOOTPRINT_MARGIN_M`). A corner tens of metres away is still dropped before that test. With no floor, the outline is the full-cloud hull (`cloud_hull`, `warning`). Too few vertices sets `output_quality` to `blocked`.
+
+`plan.json` records `footprint_method` and `output_quality`. The same choice is in the `polygon from …` note, including why a candidate was skipped. The plan SVG title repeats both fields. The repair loop uses the same three-way choice when it replaces an exploded outline.
+
+```bash
+python -m src store/c00a170fe1 --tier lidar --from-ply
+python -m src store/c7d28f72c6 --tier lidar --from-ply --frame-stride 24 --pixel-stride 8
+```
+
+A second export of each cloud repeated the method, the span, and the note.
+
+| | After ceiling search | After this gate |
+|---|---|---|
+| `c00a170fe1` polygon | 7 vertices, span 6.31 × 7.44 m, wall-inlier hull. Floor span 6.49 × 6.79 m | Same 7 vertices and span. `footprint_method=wall_inlier_hull`, `output_quality=warning`. Wall lines were outside the 0.5 m margin |
+| `c7d28f72c6` polygon | 11 vertices, span 11.61 × 15.62 m, wall-inlier hull. Floor span 11.62 × 15.12 m | 17 vertices, span 11.62 × 15.12 m, matching the floor. `footprint_method=floor_hull`, `output_quality=warning`. Wall lines self-intersect; the wall hull is outside the 0.5 m margin |
+| Walls | 4 and 5 | 4 and 5, same low-confidence counts |
+| Height | BLOCKED | BLOCKED |
+
+`c00a170fe1`’s Z span is still 0.65 m longer than the floor span, which the 0.5 m-per-side rule allows. `c7d28f72c6`’s floor hull is still larger than that capture’s camera path (about 8.3 × 9.1 m). The outline follows the reconstructed floor points. Fit residuals are still not tape accuracy.
 
 ## Derived benchmark inputs
 

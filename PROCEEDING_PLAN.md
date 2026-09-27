@@ -323,6 +323,8 @@ step 6: improve same-capture ceiling plane detection
 
 ### Step 7 — Stabilise the footprint and outputs
 
+**Status:** Complete. The gate is in `polygon_from_walls` (`src/planes.py`). A candidate outline must be a simple loop and every corner must sit within 0.5 m of the floor points. On `c00a170fe1`, the outline stays the wall-inlier hull (7 vertices, 6.31 × 7.44 m, floor 6.49 × 6.79 m) with `output_quality=warning`; wall lines were outside that margin. On `c7d28f72c6`, the wall-line loop self-intersects and the wall hull sticks out, so the outline is now the floor hull: 17 vertices, span 11.62 × 15.12 m, matching the floor (was 11.61 × 15.62 m). `output_quality=warning`. A second export of each cloud repeats the method and the span. `height_m` stays blocked. Wall counts stay 4 and 5. The README “Footprint” section records which method was selected and when the fallback is used. Nabajyoti commits this step.
+
 **Objective:** Ensure the rendered footprint is bounded, readable, and consistent with the floor evidence.
 
 **Why:** A rough but stable plan is more defensible than a geometrically detailed polygon that can explode or self-intersect.

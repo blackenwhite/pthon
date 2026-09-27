@@ -309,6 +309,8 @@ def blocked_plan_payload(adapted: AdaptedInput) -> dict:
         "height_blocked": True,
         "height_p05_p95_m": None,
         "polygon_xz_m": [],
+        "footprint_method": "",
+        "output_quality": "blocked",
         "openings": [],
         "notes": list(adapted.notes),
         "n_stills": adapted.n_stills,

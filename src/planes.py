@@ -64,6 +64,8 @@ class PlaneResult:
     notes: list[str] = field(default_factory=list)
     rejected_walls: list[RejectedPlane] = field(default_factory=list)
     rejected_ceilings: list[RejectedPlane] = field(default_factory=list)
+    footprint_method: str = ""  # wall_lines | wall_inlier_hull | floor_hull | cloud_hull
+    output_quality: str = "blocked"  # ok | warning | blocked
 
 
 def downsample_points(
@@ -348,11 +350,17 @@ def _aabb_area(poly: np.ndarray) -> float:
     return float((poly[:, 0].max() - poly[:, 0].min()) * (poly[:, 1].max() - poly[:, 1].min()))
 
 
+# A corner may sit this far outside the floor points. A 20 m spike may not.
+FOOTPRINT_MARGIN_M = 0.5
+# Drop intersection vertices that land far outside the floor before the ring is judged.
+_FAR_INTERSECTION_MARGIN = 1.0
+
+
 def _floor_margin_box(hull: np.ndarray) -> tuple[float, float, float, float]:
-    """XZ box around the floor hull. Corners a little outside the points are fine; 20 m spikes are not."""
+    """Wide XZ box used only to discard intersection spikes before the ring is tested."""
     span_x = float(hull[:, 0].max() - hull[:, 0].min())
     span_z = float(hull[:, 1].max() - hull[:, 1].min())
-    margin = max(1.0, 0.25 * max(span_x, span_z))
+    margin = max(_FAR_INTERSECTION_MARGIN, 0.25 * max(span_x, span_z))
     return (
         float(hull[:, 0].min()) - margin,
         float(hull[:, 0].max()) + margin,
@@ -366,21 +374,101 @@ def _inside_box(xz: np.ndarray, box: tuple[float, float, float, float]) -> bool:
     return x0 <= float(xz[0]) <= x1 and z0 <= float(xz[1]) <= z1
 
 
-def _polygon_within_floor(poly: np.ndarray, hull: np.ndarray) -> bool:
-    if poly.shape[0] < 4 or hull.shape[0] < 3:
+def _ring_vertices(poly: np.ndarray) -> np.ndarray:
+    if poly.shape[0] >= 2 and float(np.linalg.norm(poly[0] - poly[-1])) <= 1e-8:
+        return poly[:-1]
+    return poly
+
+
+def _close_ring(pts: np.ndarray) -> np.ndarray:
+    if pts.shape[0] == 0:
+        return np.zeros((0, 2), dtype=np.float64)
+    if float(np.linalg.norm(pts[0] - pts[-1])) <= 1e-8:
+        return pts
+    return np.vstack([pts, pts[0:1]])
+
+
+def _segments_cross(a: np.ndarray, b: np.ndarray, c: np.ndarray, d: np.ndarray) -> bool:
+    """True when open segments ab and cd cross. Shared endpoints do not count."""
+
+    def orient(p: np.ndarray, q: np.ndarray, r: np.ndarray) -> float:
+        return float((q[0] - p[0]) * (r[1] - p[1]) - (q[1] - p[1]) * (r[0] - p[0]))
+
+    o1 = orient(a, b, c)
+    o2 = orient(a, b, d)
+    o3 = orient(c, d, a)
+    o4 = orient(c, d, b)
+    eps = 1e-9
+    return o1 * o2 < -eps and o3 * o4 < -eps
+
+
+def _polygon_self_intersects(poly: np.ndarray) -> bool:
+    ring = _ring_vertices(poly)
+    n = int(ring.shape[0])
+    if n < 4:
         return False
+    for i in range(n):
+        a = ring[i]
+        b = ring[(i + 1) % n]
+        if float(np.linalg.norm(b - a)) < 1e-9:
+            continue
+        for j in range(i + 2, n):
+            if i == 0 and j == n - 1:
+                continue
+            c = ring[j]
+            d = ring[(j + 1) % n]
+            if float(np.linalg.norm(d - c)) < 1e-9:
+                continue
+            if _segments_cross(a, b, c, d):
+                return True
+    return False
+
+
+def _within_floor_margin(poly: np.ndarray, hull: np.ndarray) -> bool:
+    """Simple ring, at least a quarter of the floor box, and within 0.5 m of it."""
+    ring = _ring_vertices(poly)
+    if ring.shape[0] < 3 or hull.shape[0] < 3:
+        return False
+    if _polygon_self_intersects(poly):
+        return False
+    margin = FOOTPRINT_MARGIN_M
+    x0 = float(hull[:, 0].min()) - margin
+    x1 = float(hull[:, 0].max()) + margin
+    z0 = float(hull[:, 1].min()) - margin
+    z1 = float(hull[:, 1].max()) + margin
+    eps = 1e-3
+    for x, z in ring:
+        if not (x0 - eps <= float(x) <= x1 + eps and z0 - eps <= float(z) <= z1 + eps):
+            return False
     hull_area = max(_aabb_area(hull), 1e-6)
-    area = _aabb_area(poly)
-    if area < 0.25 * hull_area or area > 4.0 * hull_area:
+    if _aabb_area(poly) < 0.25 * hull_area:
         return False
-    box = _floor_margin_box(hull)
-    return all(_inside_box(xz, box) for xz in poly[:-1])
+    return True
 
 
-def polygon_from_walls(floor: FittedPlane, walls: list[FittedPlane]) -> tuple[np.ndarray, str]:
+def footprint_quality(method: str, polygon: np.ndarray) -> str:
+    """ok for a simple wall-line outline, warning for a hull fallback, blocked if undrawable."""
+    if polygon.shape[0] < 4:
+        return "blocked"
+    if method == "wall_lines":
+        return "ok"
+    if method in ("wall_inlier_hull", "floor_hull", "cloud_hull"):
+        return "warning"
+    return "blocked"
+
+
+def polygon_from_walls(
+    floor: FittedPlane, walls: list[FittedPlane]
+) -> tuple[np.ndarray, str, str]:
+    """Pick a closed XZ outline. Returns polygon, method code, and a note.
+
+    Order: wall-line ring, then the wall-inlier hull, then the floor hull.
+    A candidate is kept only when it is simple and stays within
+    ``FOOTPRINT_MARGIN_M`` of the floor points.
+    """
     hull = _convex_hull_xz(floor.points[:, [0, 2]])
     if not walls:
-        return hull, "polygon from floor convex hull (no walls)"
+        return hull, "floor_hull", "polygon from floor convex hull (no walls)"
     lines: list[tuple[float, np.ndarray]] = []
     for w in walls:
         line = _line_xz(w, floor)
@@ -394,10 +482,10 @@ def polygon_from_walls(floor: FittedPlane, walls: list[FittedPlane]) -> tuple[np
     if len(lines) >= 2 and box is not None:
         lines.sort(key=lambda t: t[0])
         verts: list[np.ndarray] = []
-        n = len(lines)
-        for i in range(n):
+        n_lines = len(lines)
+        for i in range(n_lines):
             l1 = lines[i][1]
-            l2 = lines[(i + 1) % n][1]
+            l2 = lines[(i + 1) % n_lines][1]
             # Nearly parallel lines meet tens of metres away and blow up the outline.
             if abs(float(np.dot(l1[:2], l2[:2]))) > 0.985:
                 continue
@@ -406,18 +494,35 @@ def polygon_from_walls(floor: FittedPlane, walls: list[FittedPlane]) -> tuple[np
                 continue
             verts.append(hit)
         if len(verts) >= 3:
-            poly = np.stack(verts, axis=0)
-            c = poly.mean(axis=0)
-            order = np.argsort(np.arctan2(poly[:, 1] - c[1], poly[:, 0] - c[0]))
-            poly = poly[order]
-            inter = np.vstack([poly, poly[0:1]])
-    if _polygon_within_floor(inter, hull):
-        return inter, "polygon from wall ∩ floor lines"
+            inter = _close_ring(np.stack(verts, axis=0))
+    if _within_floor_margin(inter, hull):
+        return inter, "wall_lines", "polygon from wall ∩ floor lines"
+    if inter.shape[0] >= 4 and _polygon_self_intersects(inter):
+        why = "wall lines self-intersect"
+    elif inter.shape[0] >= 4:
+        why = "wall lines outside floor margin"
+    else:
+        why = "line intersections degenerate"
     wall_pts = np.concatenate([w.points[:, [0, 2]] for w in walls], axis=0)
     wall_hull = _convex_hull_xz(wall_pts)
-    if _polygon_within_floor(wall_hull, hull):
-        return wall_hull, "polygon from wall-inlier convex hull (line intersections degenerate)"
-    return hull, "polygon from floor convex hull (wall intersections degenerate)"
+    if _within_floor_margin(wall_hull, hull):
+        return (
+            wall_hull,
+            "wall_inlier_hull",
+            f"polygon from wall-inlier convex hull ({why})",
+        )
+    hull_area = max(_aabb_area(hull), 1e-6)
+    if wall_hull.shape[0] < 4:
+        wall_why = "wall hull has too few vertices"
+    elif _aabb_area(wall_hull) < 0.25 * hull_area:
+        wall_why = "wall hull covers too little of the floor"
+    else:
+        wall_why = "wall hull outside floor margin"
+    return (
+        hull,
+        "floor_hull",
+        f"polygon from floor convex hull ({why}; {wall_why})",
+    )
 
 
 def _to_fitted(model: np.ndarray, pts: np.ndarray, kind: str) -> FittedPlane:
@@ -532,12 +637,17 @@ def fit_planes(
     notes.extend(ceiling_notes)
 
     polygon = np.zeros((0, 2), dtype=np.float64)
+    footprint_method = ""
     if floor is not None:
-        polygon, how = polygon_from_walls(floor, walls)
+        polygon, footprint_method, how = polygon_from_walls(floor, walls)
         notes.append(how)
     else:
         notes.append("no horizontal floor plane found")
         polygon = _convex_hull_xz(xyz[:, [0, 2]])
+        if polygon.shape[0] >= 4:
+            footprint_method = "cloud_hull"
+            notes.append("polygon from full-cloud convex hull (no floor)")
+    output_quality = footprint_quality(footprint_method, polygon)
 
     height = None
     if floor is not None and ceiling is not None:
@@ -569,6 +679,8 @@ def fit_planes(
         notes=notes,
         rejected_walls=rejected_walls,
         rejected_ceilings=rejected_ceilings,
+        footprint_method=footprint_method,
+        output_quality=output_quality,
     )
 
 
@@ -618,12 +730,27 @@ def planes_text(result: PlaneResult, *, label: str) -> str:
         lines.append(
             f"height_p95_minus_p05_m (percentile check, not a plane): {result.height_p05_p95_m:.4f}"
         )
+    if result.floor is not None and result.floor.points.shape[0] >= 2:
+        fx = result.floor.points[:, [0, 2]]
+        lines.append(
+            "floor_span_xz_m: "
+            f"{float(fx[:, 0].max() - fx[:, 0].min()):.2f} x "
+            f"{float(fx[:, 1].max() - fx[:, 1].min()):.2f}"
+        )
     if result.polygon_xz.shape[0] >= 3:
+        p = result.polygon_xz
+        lines.append(
+            "polygon_span_xz_m: "
+            f"{float(p[:, 0].max() - p[:, 0].min()):.2f} x "
+            f"{float(p[:, 1].max() - p[:, 1].min()):.2f}"
+        )
         lines.append(f"polygon_xz vertices (closed): {result.polygon_xz.shape[0] - 1}")
         for x, z in result.polygon_xz[:-1]:
             lines.append(f"  {x:.3f} {z:.3f}")
     else:
         lines.append("polygon_xz: BLOCKED (too few vertices)")
+    lines.append(f"footprint_method: {result.footprint_method or 'none'}")
+    lines.append(f"output_quality: {result.output_quality}")
     lines.append(f"openings: {len(result.openings)}")
     for op in result.openings:
         htxt = "null" if op.height_m is None else f"{op.height_m:.3f}"
