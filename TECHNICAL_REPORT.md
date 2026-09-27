@@ -1,4 +1,4 @@
-# Technical report (Path A)
+# Technical report
 
 Cozmo RGB-D room-plan baseline. This document is the engineering narrative. Numbers come from `BASELINE_REPORT.md`, `FIX_LOOP_REPORT.md`, and `README.md`. Residual fields in JSON are fit error, not tape or laser accuracy.
 
