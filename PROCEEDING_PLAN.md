@@ -471,3 +471,15 @@ Stop adding features when any of the following is true:
 - the remaining time is better spent on the README, benchmark evidence, or defense preparation.
 
 A complete, measurable baseline plus one well-supported improvement is the target. The project should demonstrate engineering judgment, not attempt to deliver the entire startup product for free.
+
+## 8. Path A — stop feature work (submission package)
+
+**Status:** Documentation complete. No further reconstruction features unless Nabajyoti reopens scope.
+
+Photo-tier MASt3R, multi-room stitch, damage, head-to-head, and iOS capture are **not** in this pass. The remaining work was:
+
+- `COMPLIANCE_MATRIX.md` — requirement → path → artifact → status;
+- `CAPTURE_PROTOCOL.md` — Route 2 stock protocol + device matrix;
+- `TECHNICAL_REPORT.md` — architecture, tiers, drift, error budget, fix loop, failures.
+
+Defense rehearsal: run `--tier lidar` on a Record3D folder; treat photo/video as ingest-only.

@@ -1,6 +1,27 @@
 # Cozmo room plan MVP
 
-Founder Record3D dumps live in `store/`. No new capture.
+**What this is:** a local Record3D LiDAR/RGB-D room-plan baseline with honest photo/video adapters. It is not a stitched property scanner, a damage inspector, or a calibrated photo-metric product.
+
+**Read these first**
+
+| Deliverable | Path |
+|---|---|
+| Compliance matrix | [COMPLIANCE_MATRIX.md](COMPLIANCE_MATRIX.md) |
+| Capture protocol + device matrix (Route 2) | [CAPTURE_PROTOCOL.md](CAPTURE_PROTOCOL.md) |
+| Technical report (≤ 6 pages) | [TECHNICAL_REPORT.md](TECHNICAL_REPORT.md) |
+| Baseline freeze | [BASELINE_REPORT.md](BASELINE_REPORT.md) |
+| Fix loop | [FIX_LOOP_REPORT.md](FIX_LOOP_REPORT.md) |
+| Scope / stop conditions | [PROCEEDING_PLAN.md](PROCEEDING_PLAN.md) |
+
+**One command per capture** (venv + `pip install -r requirements.txt` first):
+
+```bash
+python -m src path/to/record3d_folder --tier lidar
+python -m src path/to/photo_folder --tier photo
+python -m src path/to/clip.mp4 --tier video
+```
+
+LiDAR writes `out/<name>/plan.json` and `plan.svg`. Photo and video write keyframes and a **blocked** plan (no metres). Walk-in scoring against a laser applies to LiDAR only. Founder Record3D dumps live in `store/`.
 
 ## Slice 1 — inspect
 
