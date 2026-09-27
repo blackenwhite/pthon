@@ -376,6 +376,8 @@ step 8: add deterministic timing and run metadata
 
 ### Step 9 — Add the fix-loop report
 
+**Status:** Done. Commit `333d978a` (`step 9: add reproducible geometry fix-loop report`). The write-up is `FIX_LOOP_REPORT.md`, linked from the README. The experiment is the wall-selection fix: frozen `c00a170fe1` returned 7 then 6 walls with no rejection provenance; post-fix repeats at 4 walls (6 rejected: 1 `tilted_plane`, 5 `near_parallel_duplicate`). `c7d28f72c6` repeats at 5 walls (5 `near_parallel_duplicate`). Both captures still block `height_m`. Evidence is in `baseline/`, `step8/logs/`, and reproduction commands in the report. Ceiling and footprint changes are documented separately from the wall-filter claim. `python -m pytest -q`: 71 passed.
+
 **Objective:** Package one before/after experiment with a readable explanation.
 
 **Why:** The assignment explicitly rewards a correct root cause and shipped fix. We can satisfy the spirit of that requirement with one focused geometry fix.
